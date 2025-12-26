@@ -1,0 +1,25 @@
+User-agent: *
+Disallow: /wp-admin/
+Allow: /wp-admin/admin-ajax.php
+Allow: /wp-content/uploads/
+Disallow: /wp-content/plugins/
+Disallow: /wp-content/themes/
+Disallow: /wp-content/mu-plugins/
+Disallow: /_static/
+Disallow: /*?itm_source
+Disallow: /*?post_type
+Disallow: /search/
+Disallow: /*?utm_source
+Disallow: /*?s
+Disallow: /*?amp
+Disallow: /*?__hstc
+Disallow: /*?itm_campaign
+Disallow: /?query*
+Disallow: /*?p
+Disallow: /*.pdf
+
+Sitemap: https://wpvip.com/sitemap_index.xml
+
+## Timpibot crawler (no official documentation; purpose unknown)
+User-agent: Timpibot
+Disallow: /

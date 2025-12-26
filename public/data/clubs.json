@@ -1,0 +1,771 @@
+[
+  {
+    "name": "Oops Barcelona",
+    "slug": "oops-barcelona",
+    "summary": "A beautiful villa-style venue outside Barcelona with a pool area and strong architecture; quiet on a cold-night visit but full of potential when busier.",
+    "city": "Barcelona",
+    "country": "Spain",
+    "country_code": "ES",
+    "lat": 41.3851,
+    "lng": 2.1734,
+    "map_x": 30.5,
+    "map_y": 77.5
+  },
+  {
+    "name": "Lullaby Swing Club",
+    "slug": "lullaby-swing-club",
+    "summary": "Warm, multi-room club focused on social nights and themed parties.",
+    "city": "Wroclaw",
+    "country": "Poland",
+    "country_code": "PL",
+    "lat": 51.1079,
+    "lng": 17.0385
+  },
+  {
+    "name": "Le Sabbie Nere",
+    "slug": "le-sabbie-nere",
+    "summary": "Coastal club with curated events and traveler-friendly hosting.",
+    "city": "Catania",
+    "country": "Italy",
+    "country_code": "IT",
+    "lat": 37.5079,
+    "lng": 15.083
+  },
+  {
+    "name": "KitKat Club / Wasteland",
+    "slug": "kitkat-wasteland",
+    "summary": "Berlin nightlife stop with immersive event programming and themed nights.",
+    "city": "Berlin",
+    "country": "Germany",
+    "country_code": "DE",
+    "lat": 52.52,
+    "lng": 13.405
+  },
+  {
+    "name": "Fantasy Swingers Club",
+    "slug": "fantasy-swingers-club",
+    "summary": "Prague club review highlighting atmosphere, hosting, and layout.",
+    "city": "Prague",
+    "country": "Czech Republic",
+    "country_code": "CZ",
+    "lat": 50.0755,
+    "lng": 14.4378
+  },
+  {
+    "name": "Fun4Two",
+    "slug": "fun4two",
+    "summary": "Club review covering venue vibe, programming, and community feel.",
+    "country": "Poland",
+    "country_code": "PL"
+  },
+  {
+    "name": "Bunker Swingers Club",
+    "slug": "bunker-swingers-club",
+    "summary": "Prague club review with notes on structure and nightly flow.",
+    "city": "Prague",
+    "country": "Czech Republic",
+    "country_code": "CZ",
+    "lat": 50.0755,
+    "lng": 14.4378
+  },
+  {
+    "name": "Bordeaux Swing Club",
+    "slug": "bordeaux-swing-club-lodz",
+    "summary": "Club review highlighting the Lodz community and hosted evenings.",
+    "city": "Lodz",
+    "country": "Poland",
+    "country_code": "PL",
+    "lat": 51.7592,
+    "lng": 19.455
+  },
+  {
+    "name": "Le Boudoir",
+    "slug": "le-boudoir",
+    "summary": "Premier private club with three floors, lavish playrooms, and a cocktail bar; members-only access.",
+    "city": "London",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 51.5151834,
+    "lng": -0.1952509
+  },
+  {
+    "name": "Purple Mamba",
+    "slug": "purple-mamba",
+    "summary": "Intimate Midlands club known for a cozy, friendly atmosphere and weekly themed events.",
+    "city": "Nottingham",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 52.9534193,
+    "lng": -1.1496461
+  },
+  {
+    "name": "Townhouse",
+    "slug": "townhouse-wirral",
+    "summary": "Four-storey venue with dungeons, hot tubs, and inclusive events for swingers and kink communities.",
+    "city": "Wirral",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 53.379055,
+    "lng": -3.0134733
+  },
+  {
+    "name": "Cupids",
+    "slug": "cupids-manchester",
+    "summary": "Long-running swingers club with a dress-down policy and nightly events.",
+    "city": "Manchester",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 53.4794892,
+    "lng": -2.2451148
+  },
+  {
+    "name": "Within Temptation",
+    "slug": "within-temptation-torquay",
+    "summary": "Seaside club with pool, sauna, themed rooms, and an inclusive, accessible setup.",
+    "city": "Torquay",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 50.4662172,
+    "lng": -3.5298658
+  },
+  {
+    "name": "Adam & Eve's",
+    "slug": "adam-eves-manchester",
+    "summary": "Swingers venue combined with a licensed sports bar, open daily with themed events.",
+    "city": "Manchester",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 53.4794892,
+    "lng": -2.2451148
+  },
+  {
+    "name": "Vanilla Alternative",
+    "slug": "vanilla-alternative",
+    "summary": "Private members' club with large hot tub, playrooms, bar, and on-site accommodation.",
+    "city": "Bedford/Cambridgeshire",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 52.3587184,
+    "lng": 0.0438294
+  },
+  {
+    "name": "Penthouse Playrooms",
+    "slug": "penthouse-playrooms",
+    "summary": "Large club with open play areas, private rooms, and a couples-only lounge.",
+    "city": "Dunstable",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 51.8861316,
+    "lng": -0.5209341
+  },
+  {
+    "name": "The Playgrounds",
+    "slug": "the-playgrounds-derbyshire",
+    "summary": "Lifestyle lodge events in a private house, offering relaxed house-party energy.",
+    "city": "Derbyshire",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 53.1185033,
+    "lng": -1.5566179
+  },
+  {
+    "name": "AbFab (Absolutely Fabulous)",
+    "slug": "abfab",
+    "summary": "Daytime naturist spa and swingers club near Heathrow with extensive facilities.",
+    "city": "Heathrow",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 51.467739,
+    "lng": -0.4587801
+  },
+  {
+    "name": "Swindon Swingers",
+    "slug": "swindon-swingers",
+    "summary": "Straightforward club focused on Saturday events with clear online guidance.",
+    "city": "Swindon",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 51.5615327,
+    "lng": -1.7854322
+  },
+  {
+    "name": "Pleasures",
+    "slug": "pleasures-kent",
+    "summary": "Private house venue hosting themed Friday and Saturday parties with accommodation.",
+    "city": "Kent",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 51.2070749,
+    "lng": 0.7210362
+  },
+  {
+    "name": "Eureka",
+    "slug": "eureka-kent",
+    "summary": "Naturist spa and swingers club with large grounds, pools, and 7-day access.",
+    "city": "Kent",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 51.3971579,
+    "lng": 0.902075
+  },
+  {
+    "name": "Chameleons",
+    "slug": "chameleons-darlaston",
+    "summary": "Well-known club with multiple floors, operating in Darlaston and Newport.",
+    "city": "Darlaston",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 52.5733189,
+    "lng": -2.0355619
+  },
+  {
+    "name": "Xtasia",
+    "slug": "xtasia-west-bromwich",
+    "summary": "Long-established swingers and fetish venue with spa facilities and themed nights.",
+    "city": "West Bromwich",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 52.5154653,
+    "lng": -1.9889759
+  },
+  {
+    "name": "Liberty Elite",
+    "slug": "liberty-elite",
+    "summary": "Upscale club and hotel with strict door policy and sophisticated ambience.",
+    "city": "Lutterworth",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 52.4552224,
+    "lng": -1.1997815
+  },
+  {
+    "name": "La Chambre",
+    "slug": "la-chambre-sheffield",
+    "summary": "Legendary family-run club with themed rooms and dungeon, closed in 2020.",
+    "city": "Sheffield",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 53.3806626,
+    "lng": -1.4702278
+  },
+  {
+    "name": "Club F / Kestrel Hydro",
+    "slug": "club-f-kestrel-hydro",
+    "summary": "Naturist spa by day and swingers venue by night with pools, saunas, and chalets.",
+    "city": "Durham",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 54.666667,
+    "lng": -1.75
+  },
+  {
+    "name": "Infusion",
+    "slug": "infusion-blackpool",
+    "summary": "Couples-focused spa club with pool, sauna, themed play areas, and seaside vibe.",
+    "city": "Blackpool",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 53.7898181,
+    "lng": -3.0575034
+  },
+  {
+    "name": "Torture Garden",
+    "slug": "torture-garden-london",
+    "summary": "World-famous fetish club night with theatrical events, strict dress code, and consent focus.",
+    "city": "London",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 51.5074456,
+    "lng": -0.1277653
+  },
+  {
+    "name": "Killing Kittens",
+    "slug": "killing-kittens",
+    "summary": "Elite members-only events known for luxurious venues, vetting, and women-led ethos.",
+    "city": "London",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 51.5074456,
+    "lng": -0.1277653
+  },
+  {
+    "name": "La Messaline",
+    "slug": "la-messaline",
+    "summary": "Iconic club echangiste near Paris with dance floor, alcoves, pool, and sauna.",
+    "city": "Oinville-Saint-Liphard",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 48.2337734,
+    "lng": 1.9168403
+  },
+  {
+    "name": "360 Spa",
+    "slug": "360-spa-toulouse",
+    "summary": "Large libertine spa-club with multiple jacuzzis, sauna, and private rooms.",
+    "city": "Toulouse",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 43.5743501,
+    "lng": 1.4980396
+  },
+  {
+    "name": "Sun City",
+    "slug": "sun-city-lyon",
+    "summary": "Huge club with waterfalls, sauna, hammam, and a strict nude policy.",
+    "city": "Lyon",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 45.7578137,
+    "lng": 4.8320114
+  },
+  {
+    "name": "Vera's Club",
+    "slug": "veras-club",
+    "summary": "Stylish club on the Atlantic coast with themed rooms and an elegant dress code.",
+    "city": "Saujon",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 45.6742681,
+    "lng": -0.9244473
+  },
+  {
+    "name": "Le Roi Rene",
+    "slug": "le-roi-rene",
+    "summary": "Historic libertine venue near Paris, closed in the 2010s but legendary.",
+    "city": "Ville-d'Avray",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 48.8279362,
+    "lng": 2.1894241
+  },
+  {
+    "name": "Les Chandelles",
+    "slug": "les-chandelles",
+    "summary": "Paris's most exclusive swingers club with strict dress code and discreet entry.",
+    "city": "Paris",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 48.8656864,
+    "lng": 2.3363979
+  },
+  {
+    "name": "Taken Club",
+    "slug": "taken-club-paris",
+    "summary": "Modern Paris club offering an intimate, upscale setting with selective entry.",
+    "city": "Paris",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 48.8520069,
+    "lng": 2.3545629
+  },
+  {
+    "name": "Le Glamour",
+    "slug": "le-glamour-cap-d-agde",
+    "summary": "Beachfront Cap d'Agde club with pool, spa, and nude or erotic dress code.",
+    "city": "Cap d'Agde",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 43.294798,
+    "lng": 3.5303186
+  },
+  {
+    "name": "Le Jardin d'Eden",
+    "slug": "le-jardin-d-eden",
+    "summary": "Clothing-optional hotel-resort club in Cap d'Agde with pool parties and playrooms.",
+    "city": "Cap d'Agde",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 43.2951328,
+    "lng": 3.5298674
+  },
+  {
+    "name": "Chateau des Lys",
+    "slug": "chateau-des-lys",
+    "summary": "Grand chateau venue near Disneyland Paris, now occasional private events.",
+    "city": "Seine-et-Marne",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 48.5112765,
+    "lng": 2.6324396
+  },
+  {
+    "name": "L'Extasia",
+    "slug": "l-extasia",
+    "summary": "Cap d'Agde favorite with large dance floor and indoor/outdoor play areas.",
+    "city": "Cap d'Agde",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 43.2845374,
+    "lng": 3.5117752
+  },
+  {
+    "name": "L'Orphea",
+    "slug": "l-orphea",
+    "summary": "Normandy club with jacuzzi, themed rooms, and a friendly reputation.",
+    "city": "Normandy",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 49.0994488,
+    "lng": -0.1935176
+  },
+  {
+    "name": "Aloha",
+    "slug": "aloha-normandy",
+    "summary": "Modern Normandy club with a bar, dance area, and tropical-themed nights.",
+    "city": "Portsmouth",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 49.2011194,
+    "lng": -0.3823996
+  },
+  {
+    "name": "L'Absolu",
+    "slug": "l-absolu",
+    "summary": "Discreet Riviera club with terrace, pool, and upscale clientele.",
+    "city": "French Riviera",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 43.9525507,
+    "lng": 7.4794283
+  },
+  {
+    "name": "L'Anonyme",
+    "slug": "l-anonyme",
+    "summary": "Libertine restaurant-club combining dining, shows, and playrooms in the Var.",
+    "city": "Var",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 43.4173551,
+    "lng": 6.2664637
+  },
+  {
+    "name": "Le Trapeze",
+    "slug": "le-trapeze",
+    "summary": "Renowned Paris club with saunas, jacuzzis, and elegant themed nights.",
+    "city": "Paris",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 48.8534951,
+    "lng": 2.3483915
+  },
+  {
+    "name": "Insomnia",
+    "slug": "insomnia-berlin",
+    "summary": "Neo-burlesque erotic nightclub with fetish events, dungeon areas, and strict dress code.",
+    "city": "Berlin",
+    "country": "Germany",
+    "country_code": "DE",
+    "lat": 52.4655581,
+    "lng": 13.3860876
+  },
+  {
+    "name": "Lab.Oratory",
+    "slug": "lab-oratory",
+    "summary": "Male-only gay fetish club with explicit themed nights and strict dress codes.",
+    "city": "Berlin",
+    "country": "Germany",
+    "country_code": "DE",
+    "lat": 52.5115736,
+    "lng": 13.4430142
+  },
+  {
+    "name": "Schloss Milkersdorf",
+    "slug": "schloss-milkersdorf",
+    "summary": "Lifestyle schloss hosting upscale couples events with suites and ballroom.",
+    "city": "Brandenburg",
+    "country": "Germany",
+    "country_code": "DE",
+    "lat": 51.7785611,
+    "lng": 14.1669271
+  },
+  {
+    "name": "Chateau Royal",
+    "slug": "chateau-royal",
+    "summary": "Elegant couples-only villa club near Cologne/Bonn with playrooms and spa.",
+    "city": "Bad Honnef",
+    "country": "Germany",
+    "country_code": "DE",
+    "lat": 50.6519752,
+    "lng": 7.2570599
+  },
+  {
+    "name": "FunPark Dorsten",
+    "slug": "funpark-dorsten",
+    "summary": "Large NRW swinger venue with wellness facilities and big-party nights.",
+    "city": "Dorsten",
+    "country": "Germany",
+    "country_code": "DE",
+    "lat": 51.6604071,
+    "lng": 6.9647431
+  },
+  {
+    "name": "Atmos Sauna-Club",
+    "slug": "atmos-sauna-club",
+    "summary": "Hamburg spa-club blending naturist sauna culture with relaxed nightlife.",
+    "city": "Hamburg",
+    "country": "Germany",
+    "country_code": "DE",
+    "lat": 53.550341,
+    "lng": 10.000654
+  },
+  {
+    "name": "Val d'Amour",
+    "slug": "val-d-amour",
+    "summary": "Classic Brussels club prive with an intimate, welcoming atmosphere.",
+    "city": "Brussels",
+    "country": "Belgium",
+    "country_code": "BE",
+    "lat": 50.8480948,
+    "lng": 4.3528709
+  },
+  {
+    "name": "Funny Horse Club",
+    "slug": "funny-horse-club",
+    "summary": "Quirky Brussels club with relaxed atmosphere, discretion, and security.",
+    "city": "Brussels",
+    "country": "Belgium",
+    "country_code": "BE",
+    "lat": 50.8299526,
+    "lng": 4.3588247
+  },
+  {
+    "name": "Lotus Club",
+    "slug": "lotus-club-luxembourg",
+    "summary": "Luxembourg private club with weekend events, sauna, and couple-only rooms.",
+    "city": "Luxembourg City",
+    "country": "Luxembourg",
+    "country_code": "LU",
+    "lat": 49.5999681,
+    "lng": 6.1342493
+  },
+  {
+    "name": "Element6",
+    "slug": "element6-vienna",
+    "summary": "Vienna swingers club praised for a cozy atmosphere and friendly staff.",
+    "city": "Vienna",
+    "country": "Austria",
+    "country_code": "AT",
+    "lat": 48.2059688,
+    "lng": 16.3396054
+  },
+  {
+    "name": "Par i Hjartat",
+    "slug": "par-i-hjartat",
+    "summary": "Members-only Stockholm-area club with bar, lounge, stage, and play spaces.",
+    "city": "Stockholm",
+    "country": "Sweden",
+    "country_code": "SE",
+    "lat": 59.3251172,
+    "lng": 18.0710935
+  },
+  {
+    "name": "Paradise Club (Heaven Shifts)",
+    "slug": "paradise-club-heaven-shifts",
+    "summary": "Formerly Sweden's largest swingers club with multiple play levels and active events.",
+    "city": "Eskilstuna",
+    "country": "Sweden",
+    "country_code": "SE",
+    "lat": 59.3717379,
+    "lng": 16.5051474
+  },
+  {
+    "name": "Club Adam & Eva",
+    "slug": "club-adam-eva",
+    "summary": "Modern swingers club in a rebuilt historic venue with bar, spa, and themed nights.",
+    "city": "Norrkoping",
+    "country": "Sweden",
+    "country_code": "SE",
+    "lat": 58.5909124,
+    "lng": 16.1903511
+  },
+  {
+    "name": "Adam og Eva",
+    "slug": "adam-og-eva",
+    "summary": "Denmark's oldest swingers club with a cozy, couples-oriented vibe.",
+    "city": "Copenhagen",
+    "country": "Denmark",
+    "country_code": "DK",
+    "lat": 55.6867243,
+    "lng": 12.5700724
+  },
+  {
+    "name": "Swingland",
+    "slug": "swingland",
+    "summary": "Large member-run swingers association near Copenhagen, closed in 2018.",
+    "city": "Ishoj",
+    "country": "Denmark",
+    "country_code": "DK",
+    "lat": 55.6207556,
+    "lng": 12.3255279
+  },
+  {
+    "name": "Club More",
+    "slug": "club-more-helsinki",
+    "summary": "Upscale swingers lounge focused on elegant experiences and private events.",
+    "city": "Helsinki",
+    "country": "Finland",
+    "country_code": "FI",
+    "lat": 60.1666204,
+    "lng": 24.9435408
+  },
+  {
+    "name": "Training Pedralbes",
+    "slug": "training-pedralbes",
+    "summary": "Exclusive Barcelona club with luxury lounges, jacuzzi, and selective membership.",
+    "city": "Barcelona",
+    "country": "Spain",
+    "country_code": "ES",
+    "lat": 41.3825802,
+    "lng": 2.177073
+  },
+  {
+    "name": "Libert Club",
+    "slug": "libert-club-barcelona",
+    "summary": "Popular Barcelona club open nightly with bar, dance floor, and play spaces.",
+    "city": "Barcelona",
+    "country": "Spain",
+    "country_code": "ES",
+    "lat": 41.3825802,
+    "lng": 2.177073
+  },
+  {
+    "name": "Fusion VIP",
+    "slug": "fusion-vip-madrid",
+    "summary": "Exclusive Madrid swingers lounge with reservation-based entry and themed rooms.",
+    "city": "Madrid",
+    "country": "Spain",
+    "country_code": "ES",
+    "lat": 40.416782,
+    "lng": -3.703507
+  },
+  {
+    "name": "Sala Trivial",
+    "slug": "sala-trivial",
+    "summary": "Large Madrid club with jacuzzi, showers, and varied themed rooms.",
+    "city": "Madrid",
+    "country": "Spain",
+    "country_code": "ES",
+    "lat": 40.416782,
+    "lng": -3.703507
+  },
+  {
+    "name": "Venus Star Resort",
+    "slug": "venus-star-resort",
+    "summary": "Swingers-only resort with bungalows, pool parties, nightclub, and spa.",
+    "city": "Maspalomas, Gran Canaria",
+    "country": "Spain",
+    "country_code": "ES",
+    "lat": 28.1176573,
+    "lng": -15.4554137
+  },
+  {
+    "name": "Spice Lifestyle Resort",
+    "slug": "spice-lifestyle-resort",
+    "summary": "Pioneering swingers resort in Lanzarote, closed around 2020.",
+    "city": "Lanzarote",
+    "country": "Spain",
+    "country_code": "ES",
+    "lat": 29.0397081,
+    "lng": -13.6362916
+  },
+  {
+    "name": "Flirt Club",
+    "slug": "flirt-club-rome",
+    "summary": "Luxury club prive for couples and single women with strict dress code.",
+    "city": "Rome",
+    "country": "Italy",
+    "country_code": "IT",
+    "lat": 42.1870643,
+    "lng": 12.2211032
+  },
+  {
+    "name": "Club Nautilus (Club Prive Milano)",
+    "slug": "club-nautilus-milan",
+    "summary": "Long-running Milan club with dance floor, themed nights, and playrooms.",
+    "city": "Milan",
+    "country": "Italy",
+    "country_code": "IT",
+    "lat": 45.4641943,
+    "lng": 9.1896346
+  },
+  {
+    "name": "Maison de l'Amour",
+    "slug": "maison-de-l-amour",
+    "summary": "Milan club prive with refined ambiance, sauna, and private boudoirs.",
+    "city": "Milan",
+    "country": "Italy",
+    "country_code": "IT",
+    "lat": 45.5536137,
+    "lng": 9.4153814
+  },
+  {
+    "name": "Capriccio Club",
+    "slug": "capriccio-club",
+    "summary": "High-end Milan club with modern design, couples-only sections, and LED-lit spaces.",
+    "city": "Milan",
+    "country": "Italy",
+    "country_code": "IT",
+    "lat": 45.4641943,
+    "lng": 9.1896346
+  },
+  {
+    "name": "Obidis Club",
+    "slug": "obidis-club",
+    "summary": "Downtown Milan club with a friendly vibe, bar, dance area, and intimate rooms.",
+    "city": "Milan",
+    "country": "Italy",
+    "country_code": "IT",
+    "lat": 45.4641943,
+    "lng": 9.1896346
+  },
+  {
+    "name": "Harem Club Prive",
+    "slug": "harem-club-prive",
+    "summary": "Large erotic sauna-club with wet spa, relaxation areas, and themed playrooms.",
+    "city": "Milan",
+    "country": "Italy",
+    "country_code": "IT",
+    "lat": 45.4641943,
+    "lng": 9.1896346
+  },
+  {
+    "name": "Sun Garden",
+    "slug": "sun-garden-sezana",
+    "summary": "Slovenian swingers retreat with saunas, jacuzzi, and a relaxed weekend vibe.",
+    "city": "Sezana",
+    "country": "Slovenia",
+    "country_code": "SI",
+    "lat": 45.7439897,
+    "lng": 13.9348926
+  },
+  {
+    "name": "Klub Margerita",
+    "slug": "klub-margerita",
+    "summary": "Private nude sauna club in Nova Gorica welcoming swingers and themed nights.",
+    "city": "Nova Gorica",
+    "country": "Slovenia",
+    "country_code": "SI",
+    "lat": 45.9580549,
+    "lng": 13.6474706
+  },
+  {
+    "name": "Black Diamond Club",
+    "slug": "black-diamond-club",
+    "summary": "Private Belgrade club with discreet, invitation-led weekend events.",
+    "city": "Belgrade",
+    "country": "Serbia",
+    "country_code": "RS",
+    "lat": 44.8153318,
+    "lng": 20.4456588
+  },
+  {
+    "name": "EJ's Club",
+    "slug": "ejs-club-dublin",
+    "summary": "Exclusive swingers party series in Dublin with vetted, themed monthly events.",
+    "city": "Dublin",
+    "country": "Ireland",
+    "country_code": "IE",
+    "lat": 53.3493795,
+    "lng": -6.2605593
+  }
+]

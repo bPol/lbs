@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Led By Swing",
+    "url": "https://ledbyswing.com",
+    "type": "Blog",
+    "status": "Legacy",
+    "summary": "Original community blog with travel notes and club reviews."
+  },
+  {
+    "name": "SDC.com",
+    "url": "https://sdc.com",
+    "type": "Portal",
+    "status": "Legacy reference",
+    "summary": "Legacy portal review highlighted in the archive posts."
+  },
+  {
+    "name": "KitKat Club Berlin",
+    "url": "https://kitkatclub.org",
+    "type": "Club site",
+    "status": "Featured",
+    "summary": "Reference site linked from the Berlin legacy story."
+  }
+]
