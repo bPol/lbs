@@ -26,7 +26,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
+        run: npm run build:ci
 
       - name: Auth to Google Cloud
         uses: google-github-actions/auth@v2

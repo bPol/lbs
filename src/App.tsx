@@ -2337,6 +2337,10 @@ const RegisterPage = () => {
     consentPrivacy: true,
     consentPolicy: false,
   })
+  const [signInForm, setSignInForm] = useState({
+    email: '',
+    password: '',
+  })
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
@@ -2578,19 +2582,63 @@ const RegisterPage = () => {
           </div>
           <div className="register-signin">
             <p className="muted">{copy.register_have_account}</p>
+            <label className="register-field">
+              {copy.label_email}
+              <input
+                className="register-input"
+                type="email"
+                placeholder={copy.placeholder_email}
+                value={signInForm.email}
+                onChange={(event) =>
+                  setSignInForm((prev) => ({
+                    ...prev,
+                    email: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="register-field">
+              {copy.label_password}
+              <input
+                className="register-input"
+                type="password"
+                placeholder={copy.placeholder_password}
+                value={signInForm.password}
+                onChange={(event) =>
+                  setSignInForm((prev) => ({
+                    ...prev,
+                    password: event.target.value,
+                  }))
+                }
+              />
+            </label>
             <button
               className="ghost"
               type="button"
               onClick={() =>
                 handleEmailSignIn({
-                  email: registerForm.email,
-                  password: registerForm.password,
+                  email: signInForm.email,
+                  password: signInForm.password,
                 })
               }
-              disabled={!firebaseConfigured || signInLoading}
+              disabled={
+                !firebaseConfigured ||
+                signInLoading ||
+                !signInForm.email.trim() ||
+                !signInForm.password
+              }
             >
               {copy.register_sign_in}
             </button>
+            <button
+              className="ghost"
+              type="button"
+              onClick={handleAuthClick}
+              disabled={!firebaseConfigured}
+            >
+              {authUser ? copy.auth_sign_out : copy.auth_sign_in_google}
+            </button>
+            <span className="auth-status">{authStatus}</span>
             {signInStatus ? (
               <span className="register-status">{signInStatus}</span>
             ) : null}

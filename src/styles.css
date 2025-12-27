@@ -68,7 +68,7 @@ body {
   display: flex;
   gap: 18px;
   align-items: center;
-  max-width: 520px;
+  max-width: 720px;
 }
 
 .brand {
@@ -112,8 +112,8 @@ body {
 }
 
 h1 {
-  font-size: clamp(1.4rem, 2.2vw, 2.05rem);
-  line-height: 1.1;
+  font-size: clamp(1.05rem, 1.6vw, 1.55rem);
+  line-height: 1.2;
   margin-top: 6px;
 }
 
