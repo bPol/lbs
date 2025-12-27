@@ -109,6 +109,8 @@ type AppContext = {
   clubNames: Record<string, string>
   authStatus: string
   authUser: string | null
+  authEmail: string | null
+  authUid: string | null
   handleAuthClick: () => Promise<void>
   handleEmailSignIn: (details: { email: string; password: string }) => Promise<void>
   handleGoogleRegisterStart: () => Promise<{
@@ -152,6 +154,24 @@ type AppContext = {
   pendingReviews: Review[]
   isAdmin: boolean
   firebaseConfigured: boolean
+  handleProfileLoad: () => Promise<{
+    ok: boolean
+    message?: string
+    data?: {
+      displayName?: string
+      birthDate?: string
+      location?: string
+      interests?: string[]
+      consentPrivacy?: boolean
+    }
+  }>
+  handleProfileUpdate: (details: {
+    displayName: string
+    birthDate: string
+    location: string
+    interests: string[]
+    consentPrivacy: boolean
+  }) => Promise<{ ok: boolean; message: string }>
 }
 
 const loadJson = async <T,>(path: string): Promise<T | null> => {
@@ -231,6 +251,13 @@ const copy = {
     user_menu_label: 'Account',
     user_menu_edit: 'Edit profile',
     user_menu_signout: 'Sign out',
+    profile_page_title: 'Your profile',
+    profile_page_subtitle: 'Update your details and privacy settings.',
+    profile_save: 'Save changes',
+    profile_saving: 'Saving...',
+    profile_saved: 'Profile updated.',
+    profile_save_error: 'Unable to update profile. Please try again.',
+    profile_signin_prompt: 'Sign in to edit your profile.',
     request_access: 'Request Access',
     footer_tagline: 'Community home for users, constellations, clubs, and stories.',
     footer_guidelines: 'Guidelines & Terms',
@@ -516,6 +543,13 @@ const copy = {
     user_menu_label: 'Konto',
     user_menu_edit: 'Edytuj profil',
     user_menu_signout: 'Wyloguj się',
+    profile_page_title: 'Twój profil',
+    profile_page_subtitle: 'Zaktualizuj dane i ustawienia prywatności.',
+    profile_save: 'Zapisz zmiany',
+    profile_saving: 'Zapisywanie...',
+    profile_saved: 'Profil zaktualizowany.',
+    profile_save_error: 'Nie udało się zaktualizować profilu.',
+    profile_signin_prompt: 'Zaloguj się, aby edytować profil.',
     request_access: 'Poproś o dostęp',
     footer_tagline: 'Dom społeczności dla użytkowników, konstelacji, klubów i historii.',
     footer_guidelines: 'Wytyczne i regulamin',
@@ -798,6 +832,13 @@ const copy = {
     user_menu_label: 'Compte',
     user_menu_edit: 'Modifier le profil',
     user_menu_signout: 'Se déconnecter',
+    profile_page_title: 'Votre profil',
+    profile_page_subtitle: 'Mettez à jour vos informations et votre confidentialité.',
+    profile_save: 'Enregistrer',
+    profile_saving: 'Enregistrement...',
+    profile_saved: 'Profil mis à jour.',
+    profile_save_error: "Impossible de mettre à jour le profil.",
+    profile_signin_prompt: 'Connectez-vous pour modifier votre profil.',
     request_access: "Demander l'accès",
     footer_tagline: 'Maison de la communauté pour utilisateurs, constellations, clubs et histoires.',
     footer_guidelines: 'Consignes et conditions',
@@ -1081,6 +1122,13 @@ const copy = {
     user_menu_label: 'Konto',
     user_menu_edit: 'Profil bearbeiten',
     user_menu_signout: 'Abmelden',
+    profile_page_title: 'Dein Profil',
+    profile_page_subtitle: 'Aktualisiere deine Angaben und Privatsphäre.',
+    profile_save: 'Änderungen speichern',
+    profile_saving: 'Speichern...',
+    profile_saved: 'Profil aktualisiert.',
+    profile_save_error: 'Profil konnte nicht aktualisiert werden.',
+    profile_signin_prompt: 'Melde dich an, um dein Profil zu bearbeiten.',
     request_access: 'Zugang anfordern',
     footer_tagline: 'Community-Zuhause für Nutzer, Konstellationen, Clubs und Stories.',
     footer_guidelines: 'Richtlinien & Bedingungen',
@@ -1364,6 +1412,13 @@ const copy = {
     user_menu_label: 'Account',
     user_menu_edit: 'Modifica profilo',
     user_menu_signout: 'Esci',
+    profile_page_title: 'Il tuo profilo',
+    profile_page_subtitle: 'Aggiorna i dati e le impostazioni privacy.',
+    profile_save: 'Salva modifiche',
+    profile_saving: 'Salvataggio...',
+    profile_saved: 'Profilo aggiornato.',
+    profile_save_error: 'Impossibile aggiornare il profilo.',
+    profile_signin_prompt: 'Accedi per modificare il profilo.',
     request_access: 'Richiedi accesso',
     footer_tagline: 'Casa della community per utenti, costellazioni, club e storie.',
     footer_guidelines: 'Linee guida e termini',
@@ -1646,6 +1701,13 @@ const copy = {
     user_menu_label: 'Cuenta',
     user_menu_edit: 'Editar perfil',
     user_menu_signout: 'Cerrar sesión',
+    profile_page_title: 'Tu perfil',
+    profile_page_subtitle: 'Actualiza tus datos y la privacidad.',
+    profile_save: 'Guardar cambios',
+    profile_saving: 'Guardando...',
+    profile_saved: 'Perfil actualizado.',
+    profile_save_error: 'No se pudo actualizar el perfil.',
+    profile_signin_prompt: 'Inicia sesión para editar tu perfil.',
     request_access: 'Solicitar acceso',
     footer_tagline: 'Hogar de la comunidad para usuarios, constelaciones, clubes e historias.',
     footer_guidelines: 'Guías y términos',
@@ -2046,7 +2108,7 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
                 <span className="user-name">{authUser}</span>
               </summary>
               <div className="user-dropdown">
-                <Link to={`/${lang}/register`}>{copy.user_menu_edit}</Link>
+                <Link to={`/${lang}/profile`}>{copy.user_menu_edit}</Link>
                 <button type="button" onClick={handleAuthClick}>
                   {copy.user_menu_signout}
                 </button>
@@ -2863,6 +2925,208 @@ const RegisterPage = () => {
   )
 }
 
+const ProfilePage = () => {
+  const {
+    authUser,
+    authEmail,
+    authUid,
+    firebaseConfigured,
+    handleProfileLoad,
+    handleProfileUpdate,
+  } = useAppContext()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const [profileForm, setProfileForm] = useState({
+    displayName: authUser || '',
+    birthDate: '',
+    location: '',
+    interests: '',
+    consentPrivacy: true,
+  })
+  const [profileStatus, setProfileStatus] = useState('')
+  const [profileLoading, setProfileLoading] = useState(false)
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!authUid || !firebaseConfigured) {
+        return
+      }
+      const result = await handleProfileLoad()
+      if (!result.ok || !result.data) {
+        if (result.message) {
+          setProfileStatus(result.message)
+        }
+        return
+      }
+      setProfileForm({
+        displayName: result.data.displayName || authUser || '',
+        birthDate: result.data.birthDate || '',
+        location: result.data.location || '',
+        interests: (result.data.interests || []).join(', '),
+        consentPrivacy: result.data.consentPrivacy ?? true,
+      })
+    }
+    loadProfile()
+  }, [authUid, authUser, firebaseConfigured, handleProfileLoad])
+
+  const underage =
+    profileForm.birthDate.length > 0 && !isAdult(profileForm.birthDate)
+
+  const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (underage) {
+      setProfileStatus(copy.register_underage)
+      return
+    }
+    setProfileLoading(true)
+    const result = await handleProfileUpdate({
+      displayName: profileForm.displayName.trim(),
+      birthDate: profileForm.birthDate,
+      location: profileForm.location.trim(),
+      interests: profileForm.interests
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+      consentPrivacy: profileForm.consentPrivacy,
+    })
+    setProfileStatus(result.message)
+    setProfileLoading(false)
+  }
+
+  if (!authUser) {
+    return (
+      <section className="feature">
+        <div className="section-title">
+          <h3>{copy.profile_page_title}</h3>
+          <p>{copy.profile_signin_prompt}</p>
+        </div>
+        <Link className="cta" to={`/${lang}/register`}>
+          {copy.request_access}
+        </Link>
+      </section>
+    )
+  }
+
+  return (
+    <section className="feature">
+      <div className="section-title">
+        <h3>{copy.profile_page_title}</h3>
+        <p>{copy.profile_page_subtitle}</p>
+      </div>
+      <div className="auth-panel register-panel reveal">
+        <div className="register-form">
+          <div className="register-header">
+            <p className="register-kicker">{copy.register_kicker}</p>
+            <h4>{copy.register_heading}</h4>
+            <p>{copy.register_body}</p>
+          </div>
+          <form className="register-grid" onSubmit={handleProfileSubmit}>
+            <label className="register-field">
+              {copy.label_display_name}
+              <input
+                className="register-input"
+                type="text"
+                placeholder={copy.placeholder_display_name}
+                value={profileForm.displayName}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    displayName: event.target.value,
+                  }))
+                }
+                required
+              />
+            </label>
+            <label className="register-field">
+              {copy.label_email}
+              <input
+                className="register-input"
+                type="email"
+                value={authEmail || ''}
+                disabled
+              />
+            </label>
+            <label className="register-field">
+              {copy.label_birth_date}
+              <input
+                className="register-input"
+                type="date"
+                placeholder={copy.placeholder_birth_date}
+                value={profileForm.birthDate}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    birthDate: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="register-field register-span">
+              {copy.label_location}
+              <input
+                className="register-input"
+                type="text"
+                placeholder={copy.placeholder_location}
+                value={profileForm.location}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    location: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="register-field register-span">
+              {copy.label_interests}
+              <input
+                className="register-input"
+                type="text"
+                placeholder={copy.placeholder_interests}
+                value={profileForm.interests}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    interests: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <div className="register-consent register-span">
+              <label className="register-checkbox">
+                <input
+                  type="checkbox"
+                  checked={profileForm.consentPrivacy}
+                  onChange={(event) =>
+                    setProfileForm((prev) => ({
+                      ...prev,
+                      consentPrivacy: event.target.checked,
+                    }))
+                  }
+                />
+                {copy.consent_privacy}
+              </label>
+            </div>
+            <div className="register-actions register-span">
+              <button className="cta" type="submit" disabled={profileLoading}>
+                {profileLoading ? copy.profile_saving : copy.profile_save}
+              </button>
+              {underage ? (
+                <span className="register-status register-status--error">
+                  {copy.register_underage}
+                </span>
+              ) : null}
+              {profileStatus ? (
+                <span className="register-status">{profileStatus}</span>
+              ) : null}
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 const GuidelinesPage = () => {
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
@@ -3452,6 +3716,7 @@ function App() {
   const [authStatus, setAuthStatus] = useState(copy.en.auth_status_setup)
   const [authUser, setAuthUser] = useState<string | null>(null)
   const [authEmail, setAuthEmail] = useState<string | null>(null)
+  const [authUid, setAuthUid] = useState<string | null>(null)
   const [registerStatus, setRegisterStatus] = useState('')
   const [registerLoading, setRegisterLoading] = useState(false)
   const [signInLoading, setSignInLoading] = useState(false)
@@ -3488,10 +3753,12 @@ function App() {
       if (user) {
         setAuthUser(user.displayName || 'User')
         setAuthEmail(user.email || null)
+        setAuthUid(user.uid)
         setAuthStatus(languageCopy.auth_status_pending)
       } else {
         setAuthUser(null)
         setAuthEmail(null)
+        setAuthUid(null)
         setAuthStatus(languageCopy.auth_status_pending)
       }
     })
@@ -3867,6 +4134,90 @@ function App() {
     }
   }
 
+  const handleProfileLoad = async () => {
+    if (!authRef.current || !firestoreRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const user = authRef.current.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    const userDoc = await getDoc(doc(firestoreRef.current, 'users', user.uid))
+    if (!userDoc.exists()) {
+      return {
+        ok: true,
+        data: {
+          displayName: user.displayName || '',
+          birthDate: '',
+          location: '',
+          interests: [],
+          consentPrivacy: true,
+        },
+      }
+    }
+    const data = userDoc.data() as Record<string, unknown>
+    return {
+      ok: true,
+      data: {
+        displayName: String(data.displayName || user.displayName || ''),
+        birthDate: typeof data.birthDate === 'string' ? data.birthDate : '',
+        location: typeof data.location === 'string' ? data.location : '',
+        interests: Array.isArray(data.interests)
+          ? data.interests.map((item) => String(item))
+          : [],
+        consentPrivacy:
+          typeof data.consentPrivacy === 'boolean' ? data.consentPrivacy : true,
+      },
+    }
+  }
+
+  const handleProfileUpdate = async ({
+    displayName,
+    birthDate,
+    location,
+    interests,
+    consentPrivacy,
+  }: {
+    displayName: string
+    birthDate: string
+    location: string
+    interests: string[]
+    consentPrivacy: boolean
+  }) => {
+    if (!authRef.current || !firestoreRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const user = authRef.current.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    try {
+      if (displayName && user.displayName !== displayName) {
+        await updateProfile(user, { displayName })
+        setAuthUser(displayName)
+      }
+      await setDoc(
+        doc(firestoreRef.current, 'users', user.uid),
+        {
+          displayName,
+          email: user.email || '',
+          birthDate,
+          location,
+          interests,
+          consentPrivacy,
+        },
+        { merge: true }
+      )
+      return { ok: true, message: languageCopy.profile_saved }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.profile_save_error
+      return { ok: false, message }
+    }
+  }
+
   const allReviews = useMemo(
     () => [...reviews, ...firestoreReviews],
     [reviews, firestoreReviews]
@@ -3895,6 +4246,8 @@ function App() {
     clubNames,
     authStatus,
     authUser,
+    authEmail,
+    authUid,
     handleAuthClick,
     handleEmailSignIn,
     handleGoogleRegisterStart,
@@ -3909,6 +4262,8 @@ function App() {
     pendingReviews,
     isAdmin,
     firebaseConfigured,
+    handleProfileLoad,
+    handleProfileUpdate,
   }
 
   return (
@@ -3922,6 +4277,7 @@ function App() {
           <Route path="cities/:citySlug" element={<CityPage />} />
           <Route path="map" element={<MapPage />} />
           <Route path="register" element={<RegisterPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="guidelines" element={<GuidelinesPage />} />
           <Route path="admin" element={<AdminPage />} />
         </Route>
