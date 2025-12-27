@@ -16,6 +16,7 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   updateProfile,
@@ -108,6 +109,7 @@ type AppContext = {
   authStatus: string
   authUser: string | null
   handleAuthClick: () => Promise<void>
+  handleEmailSignIn: (details: { email: string; password: string }) => Promise<void>
   handleRegister: (details: {
     displayName: string
     email: string
@@ -119,7 +121,9 @@ type AppContext = {
     consentPolicy: boolean
   }) => Promise<void>
   registerStatus: string
+  signInStatus: string
   registerLoading: boolean
+  signInLoading: boolean
   handleReviewSubmit: (details: {
     club: Club
     rating: number
@@ -193,20 +197,24 @@ const copy = {
     nav_admin: 'Admin',
     request_access: 'Request Access',
     footer_tagline: 'Community home for users, constellations, clubs, and stories.',
-    footer_docs: 'Read the docs',
-    footer_start_club: 'Start a club',
+    footer_guidelines: 'Guidelines & Terms',
     lang_select_label: 'Select language',
     hero_pill: 'Built for creators, clubs, and shared stories',
     hero_title: 'Shape a living network of people, clubs, and unforgettable nights.',
     hero_lead:
       'LedBySwing brings together people, constellations, and clubs with room to share stories, reviews, and travel diaries.',
+    hero_paragraph:
+      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
+    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_body:
+      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
     hero_cta_primary: 'Launch a constellation',
     hero_cta_secondary: 'Explore the graph',
     metric_label: 'Active users',
     metric_caption: 'Growing in 12 regions',
     register_page_title: 'Create your account',
     register_page_subtitle:
-      'Complete your profile and request approval to publish reviews.',
+      'This creates a single-person account. Couples or constellations can be added later.',
     auth_title: 'Create your account',
     auth_subtitle:
       'Profiles unlock reviews, private event calendars, and invitations from constellations.',
@@ -230,9 +238,11 @@ const copy = {
     interest_tag_2: 'Voyeur',
     interest_tag_3: 'BDSM',
     interest_tag_4: 'Social events',
-    consent_age: 'I confirm I am 18+ and consent to community guidelines.',
+    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
     consent_privacy: 'Keep my profile private until I choose to publish.',
-    consent_policy: 'I agree to the Code of Conduct and review policy.',
+    consent_policy_prefix: 'I have read and agree to the ',
+    consent_policy_link: 'Terms of Service and Community Guidelines',
+    consent_policy_suffix: '.',
     register_create: 'Create account',
     register_creating: 'Creating account...',
     auth_sign_in_google: 'Sign in with Google',
@@ -240,6 +250,9 @@ const copy = {
     auth_status_setup: 'Sign-in setup required',
     auth_status_config: 'Sign-in configuration required',
     auth_status_pending: 'New accounts are reviewed before launch',
+    auth_sign_in_missing: 'Enter your email and password to sign in.',
+    auth_sign_in_success: 'Signed in.',
+    auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Passwords do not match.',
     register_status_success: 'Account created. Pending review before publishing.',
     register_status_permission:
@@ -253,23 +266,67 @@ const copy = {
     register_trust_text: 'Reviews are tied to real profiles only.',
     register_have_account: 'Already have an account?',
     register_sign_in: 'Sign in',
-    users_title: 'Users',
-    users_subtitle: 'Profiles, roles, and shared activity that power every constellation.',
-    users_card_profiles_title: 'Profiles',
-    users_card_profiles_body: 'Profiles with roles, pronouns, and shared interests.',
-    users_card_profiles_item1: 'Custom tags',
-    users_card_profiles_item2: 'Availability status',
-    users_card_profiles_item3: 'Shared interests',
-    users_card_trust_title: 'Community trust',
-    users_card_trust_body: 'Momentum grows when members contribute and share stories.',
-    users_card_trust_item1: 'Peer endorsements',
-    users_card_trust_item2: 'Event attendance',
-    users_card_trust_item3: 'Story impact',
-    users_card_privacy_title: 'Privacy choices',
-    users_card_privacy_body: 'Choose how visible you are across clubs and constellations.',
-    users_card_privacy_item1: 'Per-club visibility',
-    users_card_privacy_item2: 'Story gating',
-    users_card_privacy_item3: 'Activity masking',
+    guidelines_page_title: 'Guidelines & Terms',
+    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
+    terms_title: 'Terms of Service (The Legal Guardrails)',
+    terms_eligibility_title: 'Eligibility & Age Verification',
+    terms_eligibility_item_1:
+      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
+    terms_eligibility_item_2:
+      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
+    terms_content_title: 'Content Ownership & License',
+    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
+    terms_content_item_2:
+      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
+    terms_content_item_3:
+      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
+    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
+    terms_prohibited_item_1:
+      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
+    terms_prohibited_item_2:
+      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
+    terms_liability_title: 'Limitation of Liability',
+    terms_liability_item_1:
+      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
+    terms_liability_item_2:
+      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
+    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
+    guidelines_core_title: 'The C.O.R.E. Principles',
+    guidelines_core_item_1:
+      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
+    guidelines_core_item_2:
+      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
+    guidelines_core_item_3:
+      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
+    guidelines_core_item_4:
+      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
+    guidelines_constellation_title: 'Constellation Etiquette',
+    guidelines_constellation_item_1:
+      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
+    guidelines_constellation_item_2:
+      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
+    guidelines_event_title: 'Event Safety',
+    guidelines_event_item_1:
+      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
+    guidelines_event_item_2:
+      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
+    users_title: 'The Living Network',
+    users_subtitle: 'Explore identities and shared histories that power every connection.',
+    users_card_profiles_title: 'Dynamic Profiles',
+    users_card_profiles_body: 'Express your true self with flexible roles and deep interests.',
+    users_card_profiles_item1: 'Multi-identity tagging',
+    users_card_profiles_item2: 'Real-time availability',
+    users_card_profiles_item3: 'Intertwined interests',
+    users_card_trust_title: 'Vouched Trust',
+    users_card_trust_body: 'Safety is built through community, not algorithms.',
+    users_card_trust_item1: 'Peer-to-peer vouches',
+    users_card_trust_item2: 'Verified event history',
+    users_card_trust_item3: 'Community standing',
+    users_card_privacy_title: 'Granular Discretion',
+    users_card_privacy_body: 'Total control over how you appear to the world.',
+    users_card_privacy_item1: 'Selective club visibility',
+    users_card_privacy_item2: 'Hidden activity logs',
+    users_card_privacy_item3: 'Stealth mode',
     const_title: 'Constellations',
     const_subtitle:
       'Each constellation is a curated set of two or more users with shared intent.',
@@ -414,20 +471,24 @@ const copy = {
     nav_admin: 'Admin',
     request_access: 'Poproś o dostęp',
     footer_tagline: 'Dom społeczności dla użytkowników, konstelacji, klubów i historii.',
-    footer_docs: 'Czytaj dokumentację',
-    footer_start_club: 'Załóż klub',
+    footer_guidelines: 'Wytyczne i regulamin',
     lang_select_label: 'Wybierz język',
     hero_pill: 'Dla twórców, klubów i wspólnych historii',
     hero_title: 'Twórz żywą sieć ludzi, klubów i niezapomnianych nocy.',
     hero_lead:
       'LedBySwing łączy ludzi, konstelacje i kluby, dając miejsce na historie, recenzje i dzienniki podróży.',
+    hero_paragraph:
+      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
+    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_body:
+      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
     hero_cta_primary: 'Uruchom konstelację',
     hero_cta_secondary: 'Poznaj sieć',
     metric_label: 'Aktywni użytkownicy',
     metric_caption: 'Wzrost w 12 regionach',
     register_page_title: 'Załóż konto',
     register_page_subtitle:
-      'Uzupełnij profil i poproś o zgodę na publikację recenzji.',
+      'To tworzy konto dla jednej osoby. Pary i konstelacje dodasz później.',
     auth_title: 'Załóż konto',
     auth_subtitle:
       'Profile odblokowują recenzje, prywatne kalendarze wydarzeń i zaproszenia od konstelacji.',
@@ -451,9 +512,11 @@ const copy = {
     interest_tag_2: 'Voyeur',
     interest_tag_3: 'BDSM',
     interest_tag_4: 'Wydarzenia społeczne',
-    consent_age: 'Potwierdzam, że mam 18+ i akceptuję zasady społeczności.',
+    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
     consent_privacy: 'Zachowaj mój profil prywatny do czasu publikacji.',
-    consent_policy: 'Akceptuję Kodeks Postępowania i politykę recenzji.',
+    consent_policy_prefix: 'I have read and agree to the ',
+    consent_policy_link: 'Terms of Service and Community Guidelines',
+    consent_policy_suffix: '.',
     register_create: 'Utwórz konto',
     register_creating: 'Tworzenie konta...',
     auth_sign_in_google: 'Zaloguj przez Google',
@@ -461,6 +524,9 @@ const copy = {
     auth_status_setup: 'Wymagana konfiguracja logowania',
     auth_status_config: 'Wymagana konfiguracja logowania',
     auth_status_pending: 'Nowe konta są weryfikowane przed publikacją',
+    auth_sign_in_missing: 'Enter your email and password to sign in.',
+    auth_sign_in_success: 'Signed in.',
+    auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Hasła nie są zgodne.',
     register_status_success: 'Konto utworzone. Oczekuje na weryfikację.',
     register_status_permission:
@@ -474,6 +540,50 @@ const copy = {
     register_trust_text: 'Recenzje są powiązane z realnymi profilami.',
     register_have_account: 'Masz już konto?',
     register_sign_in: 'Zaloguj się',
+    guidelines_page_title: 'Guidelines & Terms',
+    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
+    terms_title: 'Terms of Service (The Legal Guardrails)',
+    terms_eligibility_title: 'Eligibility & Age Verification',
+    terms_eligibility_item_1:
+      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
+    terms_eligibility_item_2:
+      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
+    terms_content_title: 'Content Ownership & License',
+    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
+    terms_content_item_2:
+      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
+    terms_content_item_3:
+      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
+    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
+    terms_prohibited_item_1:
+      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
+    terms_prohibited_item_2:
+      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
+    terms_liability_title: 'Limitation of Liability',
+    terms_liability_item_1:
+      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
+    terms_liability_item_2:
+      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
+    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
+    guidelines_core_title: 'The C.O.R.E. Principles',
+    guidelines_core_item_1:
+      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
+    guidelines_core_item_2:
+      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
+    guidelines_core_item_3:
+      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
+    guidelines_core_item_4:
+      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
+    guidelines_constellation_title: 'Constellation Etiquette',
+    guidelines_constellation_item_1:
+      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
+    guidelines_constellation_item_2:
+      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
+    guidelines_event_title: 'Event Safety',
+    guidelines_event_item_1:
+      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
+    guidelines_event_item_2:
+      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
     users_title: 'Użytkownicy',
     users_subtitle: 'Profile, role i wspólna aktywność napędzają konstelacje.',
     users_card_profiles_title: 'Profile',
@@ -632,20 +742,24 @@ const copy = {
     nav_admin: 'Admin',
     request_access: "Demander l'accès",
     footer_tagline: 'Maison de la communauté pour utilisateurs, constellations, clubs et histoires.',
-    footer_docs: 'Lire la doc',
-    footer_start_club: 'Démarrer un club',
+    footer_guidelines: 'Consignes et conditions',
     lang_select_label: 'Choisir la langue',
     hero_pill: 'Pour les créateurs, les clubs et les histoires partagées',
     hero_title: 'Façonnez un réseau vivant de personnes, de clubs et de nuits inoubliables.',
     hero_lead:
       'LedBySwing réunit personnes, constellations et clubs pour partager histoires, avis et carnets de voyage.',
+    hero_paragraph:
+      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
+    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_body:
+      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
     hero_cta_primary: 'Lancer une constellation',
     hero_cta_secondary: 'Explorer le graphe',
     metric_label: 'Utilisateurs actifs',
     metric_caption: 'En croissance dans 12 régions',
     register_page_title: 'Créer votre compte',
     register_page_subtitle:
-      'Complétez votre profil et demandez la validation pour publier.',
+      'Ceci crée un compte pour une seule personne. Les couples ou constellations pourront être ajoutés plus tard.',
     auth_title: 'Créer votre compte',
     auth_subtitle:
       'Les profils débloquent les avis, les calendriers privés et les invitations.',
@@ -669,9 +783,11 @@ const copy = {
     interest_tag_2: 'Voyeur',
     interest_tag_3: 'BDSM',
     interest_tag_4: 'Événements sociaux',
-    consent_age: "Je confirme avoir 18+ et accepter les règles.",
+    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
     consent_privacy: 'Garder mon profil privé jusqu’à publication.',
-    consent_policy: "J'accepte le Code de conduite et la politique d'avis.",
+    consent_policy_prefix: 'I have read and agree to the ',
+    consent_policy_link: 'Terms of Service and Community Guidelines',
+    consent_policy_suffix: '.',
     register_create: 'Créer un compte',
     register_creating: 'Création...',
     auth_sign_in_google: 'Se connecter avec Google',
@@ -679,6 +795,9 @@ const copy = {
     auth_status_setup: 'Configuration requise',
     auth_status_config: 'Configuration requise',
     auth_status_pending: 'Les nouveaux comptes sont vérifiés avant publication',
+    auth_sign_in_missing: 'Enter your email and password to sign in.',
+    auth_sign_in_success: 'Signed in.',
+    auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Les mots de passe ne correspondent pas.',
     register_status_success: 'Compte créé. En attente de validation.',
     register_status_permission:
@@ -692,6 +811,50 @@ const copy = {
     register_trust_text: 'Les avis sont liés à de vrais profils.',
     register_have_account: 'Vous avez déjà un compte ?',
     register_sign_in: 'Se connecter',
+    guidelines_page_title: 'Guidelines & Terms',
+    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
+    terms_title: 'Terms of Service (The Legal Guardrails)',
+    terms_eligibility_title: 'Eligibility & Age Verification',
+    terms_eligibility_item_1:
+      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
+    terms_eligibility_item_2:
+      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
+    terms_content_title: 'Content Ownership & License',
+    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
+    terms_content_item_2:
+      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
+    terms_content_item_3:
+      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
+    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
+    terms_prohibited_item_1:
+      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
+    terms_prohibited_item_2:
+      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
+    terms_liability_title: 'Limitation of Liability',
+    terms_liability_item_1:
+      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
+    terms_liability_item_2:
+      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
+    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
+    guidelines_core_title: 'The C.O.R.E. Principles',
+    guidelines_core_item_1:
+      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
+    guidelines_core_item_2:
+      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
+    guidelines_core_item_3:
+      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
+    guidelines_core_item_4:
+      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
+    guidelines_constellation_title: 'Constellation Etiquette',
+    guidelines_constellation_item_1:
+      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
+    guidelines_constellation_item_2:
+      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
+    guidelines_event_title: 'Event Safety',
+    guidelines_event_item_1:
+      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
+    guidelines_event_item_2:
+      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
     users_title: 'Utilisateurs',
     users_subtitle: "Profils, rôles et activité partagée alimentent chaque constellation.",
     users_card_profiles_title: 'Profils',
@@ -850,20 +1013,24 @@ const copy = {
     nav_admin: 'Admin',
     request_access: 'Zugang anfordern',
     footer_tagline: 'Community-Zuhause für Nutzer, Konstellationen, Clubs und Stories.',
-    footer_docs: 'Doku lesen',
-    footer_start_club: 'Club starten',
+    footer_guidelines: 'Richtlinien & Bedingungen',
     lang_select_label: 'Sprache wählen',
     hero_pill: 'Für Creator, Clubs und gemeinsame Geschichten',
     hero_title: 'Forme ein lebendiges Netzwerk aus Menschen, Clubs und Nächten.',
     hero_lead:
       'LedBySwing verbindet Menschen, Konstellationen und Clubs für Stories, Reviews und Reisetagebücher.',
+    hero_paragraph:
+      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
+    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_body:
+      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
     hero_cta_primary: 'Konstellation starten',
     hero_cta_secondary: 'Netz erkunden',
     metric_label: 'Aktive Nutzer',
     metric_caption: 'Wächst in 12 Regionen',
     register_page_title: 'Konto erstellen',
     register_page_subtitle:
-      'Profil vervollständigen und Freigabe zum Veröffentlichen anfordern.',
+      'Hier erstellst du ein Einzelkonto. Paare oder Konstellationen kannst du später hinzufügen.',
     auth_title: 'Konto erstellen',
     auth_subtitle:
       'Profile schalten Reviews, private Kalender und Einladungen frei.',
@@ -887,9 +1054,11 @@ const copy = {
     interest_tag_2: 'Voyeur',
     interest_tag_3: 'BDSM',
     interest_tag_4: 'Social Events',
-    consent_age: 'Ich bestätige, dass ich 18+ bin und die Regeln akzeptiere.',
+    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
     consent_privacy: 'Profil privat halten, bis ich es veröffentliche.',
-    consent_policy: 'Ich stimme dem Verhaltenskodex und der Review-Policy zu.',
+    consent_policy_prefix: 'I have read and agree to the ',
+    consent_policy_link: 'Terms of Service and Community Guidelines',
+    consent_policy_suffix: '.',
     register_create: 'Konto erstellen',
     register_creating: 'Konto wird erstellt...',
     auth_sign_in_google: 'Mit Google anmelden',
@@ -897,6 +1066,9 @@ const copy = {
     auth_status_setup: 'Anmeldung muss konfiguriert werden',
     auth_status_config: 'Anmeldung muss konfiguriert werden',
     auth_status_pending: 'Neue Konten werden vor Veröffentlichung geprüft',
+    auth_sign_in_missing: 'Enter your email and password to sign in.',
+    auth_sign_in_success: 'Signed in.',
+    auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Passwörter stimmen nicht überein.',
     register_status_success: 'Konto erstellt. Prüfung ausstehend.',
     register_status_permission:
@@ -910,6 +1082,50 @@ const copy = {
     register_trust_text: 'Reviews sind an echte Profile gebunden.',
     register_have_account: 'Schon ein Konto?',
     register_sign_in: 'Anmelden',
+    guidelines_page_title: 'Guidelines & Terms',
+    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
+    terms_title: 'Terms of Service (The Legal Guardrails)',
+    terms_eligibility_title: 'Eligibility & Age Verification',
+    terms_eligibility_item_1:
+      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
+    terms_eligibility_item_2:
+      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
+    terms_content_title: 'Content Ownership & License',
+    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
+    terms_content_item_2:
+      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
+    terms_content_item_3:
+      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
+    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
+    terms_prohibited_item_1:
+      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
+    terms_prohibited_item_2:
+      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
+    terms_liability_title: 'Limitation of Liability',
+    terms_liability_item_1:
+      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
+    terms_liability_item_2:
+      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
+    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
+    guidelines_core_title: 'The C.O.R.E. Principles',
+    guidelines_core_item_1:
+      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
+    guidelines_core_item_2:
+      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
+    guidelines_core_item_3:
+      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
+    guidelines_core_item_4:
+      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
+    guidelines_constellation_title: 'Constellation Etiquette',
+    guidelines_constellation_item_1:
+      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
+    guidelines_constellation_item_2:
+      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
+    guidelines_event_title: 'Event Safety',
+    guidelines_event_item_1:
+      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
+    guidelines_event_item_2:
+      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
     users_title: 'Nutzer',
     users_subtitle: 'Profile, Rollen und Aktivität treiben Konstellationen an.',
     users_card_profiles_title: 'Profile',
@@ -1068,20 +1284,24 @@ const copy = {
     nav_admin: 'Admin',
     request_access: 'Richiedi accesso',
     footer_tagline: 'Casa della community per utenti, costellazioni, club e storie.',
-    footer_docs: 'Leggi la documentazione',
-    footer_start_club: 'Avvia un club',
+    footer_guidelines: 'Linee guida e termini',
     lang_select_label: 'Seleziona lingua',
     hero_pill: 'Per creator, club e storie condivise',
     hero_title: 'Crea una rete viva di persone, club e notti indimenticabili.',
     hero_lead:
       'LedBySwing unisce persone, costellazioni e club per storie, recensioni e diari di viaggio.',
+    hero_paragraph:
+      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
+    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_body:
+      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
     hero_cta_primary: 'Lancia una costellazione',
     hero_cta_secondary: 'Esplora il grafo',
     metric_label: 'Utenti attivi',
     metric_caption: 'In crescita in 12 regioni',
     register_page_title: 'Crea il tuo account',
     register_page_subtitle:
-      'Completa il profilo e richiedi l’approvazione per pubblicare.',
+      'Qui crei un account per una sola persona. Coppie o costellazioni potrai aggiungerle più tardi.',
     auth_title: 'Crea il tuo account',
     auth_subtitle:
       'I profili sbloccano recensioni, calendari privati e inviti.',
@@ -1105,9 +1325,11 @@ const copy = {
     interest_tag_2: 'Voyeur',
     interest_tag_3: 'BDSM',
     interest_tag_4: 'Eventi sociali',
-    consent_age: 'Confermo di avere 18+ e accetto le linee guida.',
+    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
     consent_privacy: 'Mantieni il profilo privato finché non pubblico.',
-    consent_policy: 'Accetto il Codice di condotta e la policy.',
+    consent_policy_prefix: 'I have read and agree to the ',
+    consent_policy_link: 'Terms of Service and Community Guidelines',
+    consent_policy_suffix: '.',
     register_create: 'Crea account',
     register_creating: 'Creazione...',
     auth_sign_in_google: 'Accedi con Google',
@@ -1115,6 +1337,9 @@ const copy = {
     auth_status_setup: 'Configurazione accesso richiesta',
     auth_status_config: 'Configurazione accesso richiesta',
     auth_status_pending: 'I nuovi account vengono verificati prima della pubblicazione',
+    auth_sign_in_missing: 'Enter your email and password to sign in.',
+    auth_sign_in_success: 'Signed in.',
+    auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Le password non corrispondono.',
     register_status_success: 'Account creato. In attesa di revisione.',
     register_status_permission:
@@ -1128,6 +1353,50 @@ const copy = {
     register_trust_text: 'Le recensioni sono legate a profili reali.',
     register_have_account: 'Hai già un account?',
     register_sign_in: 'Accedi',
+    guidelines_page_title: 'Guidelines & Terms',
+    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
+    terms_title: 'Terms of Service (The Legal Guardrails)',
+    terms_eligibility_title: 'Eligibility & Age Verification',
+    terms_eligibility_item_1:
+      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
+    terms_eligibility_item_2:
+      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
+    terms_content_title: 'Content Ownership & License',
+    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
+    terms_content_item_2:
+      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
+    terms_content_item_3:
+      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
+    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
+    terms_prohibited_item_1:
+      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
+    terms_prohibited_item_2:
+      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
+    terms_liability_title: 'Limitation of Liability',
+    terms_liability_item_1:
+      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
+    terms_liability_item_2:
+      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
+    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
+    guidelines_core_title: 'The C.O.R.E. Principles',
+    guidelines_core_item_1:
+      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
+    guidelines_core_item_2:
+      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
+    guidelines_core_item_3:
+      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
+    guidelines_core_item_4:
+      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
+    guidelines_constellation_title: 'Constellation Etiquette',
+    guidelines_constellation_item_1:
+      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
+    guidelines_constellation_item_2:
+      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
+    guidelines_event_title: 'Event Safety',
+    guidelines_event_item_1:
+      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
+    guidelines_event_item_2:
+      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
     users_title: 'Utenti',
     users_subtitle: 'Profili, ruoli e attività condivisa alimentano le costellazioni.',
     users_card_profiles_title: 'Profili',
@@ -1286,20 +1555,24 @@ const copy = {
     nav_admin: 'Admin',
     request_access: 'Solicitar acceso',
     footer_tagline: 'Hogar de la comunidad para usuarios, constelaciones, clubes e historias.',
-    footer_docs: 'Leer la documentación',
-    footer_start_club: 'Crear un club',
+    footer_guidelines: 'Guías y términos',
     lang_select_label: 'Seleccionar idioma',
     hero_pill: 'Para creadores, clubes e historias compartidas',
     hero_title: 'Crea una red viva de personas, clubes y noches inolvidables.',
     hero_lead:
       'LedBySwing conecta personas, constelaciones y clubes para historias, reseñas y diarios de viaje.',
+    hero_paragraph:
+      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
+    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_body:
+      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
     hero_cta_primary: 'Lanzar una constelación',
     hero_cta_secondary: 'Explorar la red',
     metric_label: 'Usuarios activos',
     metric_caption: 'Creciendo en 12 regiones',
     register_page_title: 'Crea tu cuenta',
     register_page_subtitle:
-      'Completa tu perfil y solicita aprobación para publicar reseñas.',
+      'Esto crea una cuenta individual. Las parejas o constelaciones se pueden añadir más adelante.',
     auth_title: 'Crea tu cuenta',
     auth_subtitle:
       'Los perfiles desbloquean reseñas, calendarios privados e invitaciones.',
@@ -1323,9 +1596,11 @@ const copy = {
     interest_tag_2: 'Voyeur',
     interest_tag_3: 'BDSM',
     interest_tag_4: 'Eventos sociales',
-    consent_age: 'Confirmo que tengo 18+ y acepto las normas.',
+    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
     consent_privacy: 'Mantener mi perfil privado hasta publicarlo.',
-    consent_policy: 'Acepto el Código de Conducta y la política de reseñas.',
+    consent_policy_prefix: 'I have read and agree to the ',
+    consent_policy_link: 'Terms of Service and Community Guidelines',
+    consent_policy_suffix: '.',
     register_create: 'Crear cuenta',
     register_creating: 'Creando...',
     auth_sign_in_google: 'Iniciar sesión con Google',
@@ -1333,6 +1608,9 @@ const copy = {
     auth_status_setup: 'Se requiere configuración de acceso',
     auth_status_config: 'Se requiere configuración de acceso',
     auth_status_pending: 'Las nuevas cuentas se revisan antes de publicarse',
+    auth_sign_in_missing: 'Enter your email and password to sign in.',
+    auth_sign_in_success: 'Signed in.',
+    auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Las contraseñas no coinciden.',
     register_status_success: 'Cuenta creada. Pendiente de revisión.',
     register_status_permission:
@@ -1346,6 +1624,50 @@ const copy = {
     register_trust_text: 'Las reseñas se asocian a perfiles reales.',
     register_have_account: '¿Ya tienes cuenta?',
     register_sign_in: 'Iniciar sesión',
+    guidelines_page_title: 'Guidelines & Terms',
+    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
+    terms_title: 'Terms of Service (The Legal Guardrails)',
+    terms_eligibility_title: 'Eligibility & Age Verification',
+    terms_eligibility_item_1:
+      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
+    terms_eligibility_item_2:
+      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
+    terms_content_title: 'Content Ownership & License',
+    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
+    terms_content_item_2:
+      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
+    terms_content_item_3:
+      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
+    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
+    terms_prohibited_item_1:
+      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
+    terms_prohibited_item_2:
+      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
+    terms_liability_title: 'Limitation of Liability',
+    terms_liability_item_1:
+      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
+    terms_liability_item_2:
+      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
+    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
+    guidelines_core_title: 'The C.O.R.E. Principles',
+    guidelines_core_item_1:
+      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
+    guidelines_core_item_2:
+      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
+    guidelines_core_item_3:
+      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
+    guidelines_core_item_4:
+      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
+    guidelines_constellation_title: 'Constellation Etiquette',
+    guidelines_constellation_item_1:
+      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
+    guidelines_constellation_item_2:
+      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
+    guidelines_event_title: 'Event Safety',
+    guidelines_event_item_1:
+      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
+    guidelines_event_item_2:
+      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
     users_title: 'Usuarios',
     users_subtitle: 'Perfiles, roles y actividad compartida alimentan constelaciones.',
     users_card_profiles_title: 'Perfiles',
@@ -1542,21 +1864,52 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
       <div className="ambient"></div>
       <header className="site-header">
         <Link to={`/${lang}`} className="brand">
-          <span className="brand-mark"></span>
+          <div className="logo-container">
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 100 100"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path
+                d="M20 80 C 20 50, 50 50, 50 20"
+                stroke="url(#grad1)"
+                strokeWidth="8"
+                strokeLinecap="round"
+              />
+              <path
+                d="M50 80 C 50 65, 80 65, 80 50"
+                stroke="url(#grad1)"
+                strokeWidth="8"
+                strokeLinecap="round"
+                opacity="0.7"
+              />
+              <circle cx="20" cy="80" r="12" fill="var(--logo-primary)" />
+              <circle cx="50" cy="20" r="12" fill="var(--logo-secondary)" />
+              <circle cx="80" cy="50" r="12" fill="var(--logo-primary)" />
+              <defs>
+                <linearGradient id="grad1" x1="0%" y1="100%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="var(--logo-primary)" stopOpacity="1" />
+                  <stop offset="100%" stopColor="var(--logo-secondary)" stopOpacity="1" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <div className="logo-text">
+              LedBy<span className="highlight">Swing</span>
+            </div>
+          </div>
           <div>
-            <p className="eyebrow">LedBySwing</p>
             <h1>{copy.site_tagline}</h1>
           </div>
         </Link>
         <nav className="nav">
-          <a href={`/${lang}#users`}>{copy.nav_users}</a>
           <a href={`/${lang}#constellations`}>{copy.nav_constellations}</a>
           <Link to={`/${lang}/clubs`}>{copy.nav_clubs}</Link>
           <a href={`/${lang}#map`}>{copy.nav_map}</a>
-          <a href={`/${lang}#websites`}>{copy.nav_websites}</a>
           <a href={`/${lang}#blog`}>{copy.nav_blog}</a>
           <Link to={`/${lang}/register`}>{copy.nav_join}</Link>
-          <a href={`/${lang}#moderation`}>{copy.nav_review}</a>
           {isAdmin ? (
             <Link to={`/${lang}/admin`}>{copy.nav_admin}</Link>
           ) : null}
@@ -1589,8 +1942,9 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
           <p>{copy.footer_tagline}</p>
         </div>
         <div className="footer-actions">
-          <button className="ghost">{copy.footer_docs}</button>
-          <button className="cta">{copy.footer_start_club}</button>
+          <Link className="ghost" to={`/${lang}/guidelines`}>
+            {copy.footer_guidelines}
+          </Link>
         </div>
       </footer>
     </div>
@@ -1619,6 +1973,7 @@ const HomePage = () => {
           <p className="lead">
             {copy.hero_lead}
           </p>
+          <p className="lead">{copy.hero_paragraph}</p>
           <div className="hero-actions">
             <Link className="cta" to={`/${lang}/register`}>
               {copy.hero_cta_primary}
@@ -1854,34 +2209,11 @@ const HomePage = () => {
         </div>
       </section>
 
-      <section className="feature" id="moderation">
+      <section className="feature" id="relationships">
         <div className="section-title">
-          <h3>{copy.moderation_title}</h3>
-          <p>{copy.moderation_desc}</p>
+          <h3>{copy.relationships_title}</h3>
+          <p>{copy.relationships_body}</p>
         </div>
-        {isAdmin ? (
-          <div className="moderation-grid reveal">
-            <div className="moderation-card">
-              <p className="queue-label">{copy.moderation_pending_label}</p>
-              <h4>{pendingReviews.length}</h4>
-              <p>{copy.moderation_pending_desc}</p>
-              <Link className="ghost" to={`/${lang}/admin`}>
-                {copy.moderation_open_admin}
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="moderation-grid reveal">
-            <div className="moderation-card">
-              <p className="queue-label">{copy.moderation_admin_only_title}</p>
-              <h4>{copy.moderation_admin_only_title}</h4>
-              <p>{copy.moderation_admin_only_desc}</p>
-              <Link className="ghost" to={`/${lang}/admin`}>
-                {copy.moderation_open_admin}
-              </Link>
-            </div>
-          </div>
-        )}
       </section>
     </>
   )
@@ -1986,9 +2318,12 @@ const RegisterPage = () => {
     authStatus,
     authUser,
     handleAuthClick,
+    handleEmailSignIn,
     handleRegister,
     registerStatus,
+    signInStatus,
     registerLoading,
+    signInLoading,
     firebaseConfigured,
   } = useAppContext()
   const [registerForm, setRegisterForm] = useState({
@@ -2197,7 +2532,11 @@ const RegisterPage = () => {
                   }
                   required
                 />
-                {copy.consent_policy}
+                <span>
+                  {copy.consent_policy_prefix}
+                  <Link to={`/${lang}/guidelines`}>{copy.consent_policy_link}</Link>
+                  {copy.consent_policy_suffix}
+                </span>
               </label>
             </div>
             <div className="register-actions register-span">
@@ -2239,11 +2578,99 @@ const RegisterPage = () => {
           </div>
           <div className="register-signin">
             <p className="muted">{copy.register_have_account}</p>
-            <button className="ghost" type="button">
+            <button
+              className="ghost"
+              type="button"
+              onClick={() =>
+                handleEmailSignIn({
+                  email: registerForm.email,
+                  password: registerForm.password,
+                })
+              }
+              disabled={!firebaseConfigured || signInLoading}
+            >
               {copy.register_sign_in}
             </button>
+            {signInStatus ? (
+              <span className="register-status">{signInStatus}</span>
+            ) : null}
           </div>
         </aside>
+      </div>
+    </section>
+  )
+}
+
+const GuidelinesPage = () => {
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+
+  return (
+    <section className="feature legal-page">
+      <div className="section-title">
+        <h3>{copy.guidelines_page_title}</h3>
+        <p>{copy.guidelines_page_subtitle}</p>
+      </div>
+      <div className="legal-stack">
+        <div className="legal-section">
+          <h4>{copy.terms_title}</h4>
+          <div className="legal-block">
+            <h5>{copy.terms_eligibility_title}</h5>
+            <ul className="legal-list">
+              <li>{copy.terms_eligibility_item_1}</li>
+              <li>{copy.terms_eligibility_item_2}</li>
+            </ul>
+          </div>
+          <div className="legal-block">
+            <h5>{copy.terms_content_title}</h5>
+            <ul className="legal-list">
+              <li>{copy.terms_content_item_1}</li>
+              <li>{copy.terms_content_item_2}</li>
+              <li>{copy.terms_content_item_3}</li>
+            </ul>
+          </div>
+          <div className="legal-block">
+            <h5>{copy.terms_prohibited_title}</h5>
+            <ul className="legal-list">
+              <li>{copy.terms_prohibited_item_1}</li>
+              <li>{copy.terms_prohibited_item_2}</li>
+            </ul>
+          </div>
+          <div className="legal-block">
+            <h5>{copy.terms_liability_title}</h5>
+            <ul className="legal-list">
+              <li>{copy.terms_liability_item_1}</li>
+              <li>{copy.terms_liability_item_2}</li>
+            </ul>
+          </div>
+        </div>
+        <div className="legal-section">
+          <h4>{copy.guidelines_title}</h4>
+          <div className="legal-block">
+            <h5>{copy.guidelines_core_title}</h5>
+            <ul className="legal-list">
+              <li>{copy.guidelines_core_item_1}</li>
+              <li>{copy.guidelines_core_item_2}</li>
+              <li>{copy.guidelines_core_item_3}</li>
+              <li>{copy.guidelines_core_item_4}</li>
+            </ul>
+          </div>
+          <div className="legal-block">
+            <h5>{copy.guidelines_constellation_title}</h5>
+            <ul className="legal-list">
+              <li>{copy.guidelines_constellation_item_1}</li>
+              <li>{copy.guidelines_constellation_item_2}</li>
+            </ul>
+          </div>
+          <div className="legal-block">
+            <h5>{copy.guidelines_event_title}</h5>
+            <ul className="legal-list">
+              <li>{copy.guidelines_event_item_1}</li>
+              <li>{copy.guidelines_event_item_2}</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
   )
@@ -2735,6 +3162,8 @@ function App() {
   const [authEmail, setAuthEmail] = useState<string | null>(null)
   const [registerStatus, setRegisterStatus] = useState('')
   const [registerLoading, setRegisterLoading] = useState(false)
+  const [signInLoading, setSignInLoading] = useState(false)
+  const [signInStatus, setSignInStatus] = useState('')
   const authRef = useRef<{ auth: Auth; provider: GoogleAuthProvider } | null>(
     null
   )
@@ -2885,6 +3314,37 @@ function App() {
     await signInWithPopup(auth, provider)
   }
 
+  const handleEmailSignIn = async ({
+    email,
+    password,
+  }: {
+    email: string
+    password: string
+  }) => {
+    if (!authRef.current) {
+      setSignInStatus(languageCopy.auth_status_config)
+      return
+    }
+    if (!email.trim() || !password) {
+      setSignInStatus(languageCopy.auth_sign_in_missing)
+      return
+    }
+    setSignInLoading(true)
+    setSignInStatus('')
+    try {
+      await signInWithEmailAndPassword(authRef.current.auth, email.trim(), password)
+      setSignInStatus(languageCopy.auth_sign_in_success)
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.auth_sign_in_error
+      setSignInStatus(message)
+    } finally {
+      setSignInLoading(false)
+    }
+  }
+
   const handleRegister = async ({
     displayName,
     email,
@@ -3023,9 +3483,12 @@ function App() {
     authStatus,
     authUser,
     handleAuthClick,
+    handleEmailSignIn,
     handleRegister,
     registerStatus,
+    signInStatus,
     registerLoading,
+    signInLoading,
     handleReviewSubmit,
     handleReviewModeration,
     pendingReviews,
@@ -3044,6 +3507,7 @@ function App() {
           <Route path="cities/:citySlug" element={<CityPage />} />
           <Route path="map" element={<MapPage />} />
           <Route path="register" element={<RegisterPage />} />
+          <Route path="guidelines" element={<GuidelinesPage />} />
           <Route path="admin" element={<AdminPage />} />
         </Route>
       ))}

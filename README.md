@@ -71,3 +71,8 @@ export default defineConfig([
   },
 ])
 ```
+
+## Deployment
+
+For a budget-friendly Google Cloud deploy via GitHub Actions, see
+`docs/gcp-deploy.md`.

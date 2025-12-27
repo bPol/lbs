@@ -1,0 +1,51 @@
+name: Deploy to GCS
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_ID_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Sync to bucket
+        env:
+          GCP_BUCKET: ${{ secrets.GCP_BUCKET }}
+        run: gsutil -m rsync -r -d dist "gs://${GCP_BUCKET}"
+
+      - name: Configure website and cache headers
+        env:
+          GCP_BUCKET: ${{ secrets.GCP_BUCKET }}
+        run: |
+          gsutil web set -m index.html -e index.html "gs://${GCP_BUCKET}"
+          gsutil -m setmeta -r -h "Cache-Control:public, max-age=31536000, immutable" "gs://${GCP_BUCKET}/assets" || true
+          gsutil -m setmeta -h "Cache-Control:no-cache" "gs://${GCP_BUCKET}/index.html"
