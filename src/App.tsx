@@ -46,6 +46,8 @@ const firebaseConfig = {
   appId: '1:68542676788:web:a3f793148639c8f006ef61',
 }
 
+type LocalizedText = Record<string, string>
+
 type Club = {
   name: string
   slug: string
@@ -56,22 +58,23 @@ type Club = {
   map_y?: number
   lat?: number
   lng?: number
-  summary: string
+  summary: LocalizedText | string
 }
 
 type Website = {
   name: string
   url: string
-  type: string
-  status: string
-  summary: string
+  type: LocalizedText | string
+  status: LocalizedText | string
+  summary: LocalizedText | string
 }
 
 type Post = {
-  title: string
-  date: string
-  excerpt: string
-  meta: [string, string]
+  title: LocalizedText | string
+  date: LocalizedText | string
+  excerpt: LocalizedText | string
+  meta: [LocalizedText | string, LocalizedText | string]
+  url: LocalizedText | string
 }
 
 type Constellation = {
@@ -149,6 +152,13 @@ type AppContext = {
     rating: number
     text: string
     anonymous?: boolean
+  }) => Promise<{ ok: boolean; message: string }>
+  handleClubSubmit: (details: {
+    name: string
+    city: string
+    country: string
+    website: string
+    summary: string
   }) => Promise<{ ok: boolean; message: string }>
   handleReviewModeration: (reviewId: string, status: 'approved' | 'rejected') => Promise<void>
   pendingReviews: Review[]
@@ -477,6 +487,21 @@ const copy = {
     clubs_page_title: 'Clubs',
     clubs_page_desc:
       'Browse every club, then open a detail page for reviews and stories.',
+    club_submit_title: 'Submit a club',
+    club_submit_desc: 'Know a club we should add? Send the details for review.',
+    club_submit_name_label: 'Club name',
+    club_submit_city_label: 'City',
+    club_submit_country_label: 'Country',
+    club_submit_website_label: 'Website',
+    club_submit_summary_label: 'Short description',
+    club_submit_summary_placeholder: 'Share what makes this club special...',
+    club_submit_submit: 'Submit club',
+    club_submit_submitting: 'Submitting...',
+    club_submit_signin_required: 'Sign in to submit a club.',
+    club_submit_status_pending: 'Club submitted for moderation.',
+    club_submit_status_error: 'Unable to submit club. Please try again.',
+    club_submit_permission_error:
+      'Club submission blocked by Firestore rules. Check permissions.',
     city_breadcrumb_home: 'Home',
     city_breadcrumb_clubs: 'Clubs',
     city_title_desc: 'Clubs and constellations connected to this city.',
@@ -766,6 +791,22 @@ const copy = {
     admin_recent_empty: 'Brak zatwierdzonych recenzji.',
     clubs_page_title: 'Kluby',
     clubs_page_desc: 'Przeglądaj kluby i otwieraj szczegóły.',
+    club_submit_title: 'Zgłoś klub',
+    club_submit_desc:
+      'Znasz klub, który powinniśmy dodać? Prześlij szczegóły do weryfikacji.',
+    club_submit_name_label: 'Nazwa klubu',
+    club_submit_city_label: 'Miasto',
+    club_submit_country_label: 'Kraj',
+    club_submit_website_label: 'Strona',
+    club_submit_summary_label: 'Krótki opis',
+    club_submit_summary_placeholder: 'Opisz, co wyróżnia ten klub...',
+    club_submit_submit: 'Wyślij klub',
+    club_submit_submitting: 'Wysyłanie...',
+    club_submit_signin_required: 'Zaloguj się, aby zgłosić klub.',
+    club_submit_status_pending: 'Klub wysłany do moderacji.',
+    club_submit_status_error: 'Nie udało się wysłać klubu.',
+    club_submit_permission_error:
+      'Zgłoszenie klubu zablokowane przez reguły Firestore.',
     city_breadcrumb_home: 'Home',
     city_breadcrumb_clubs: 'Kluby',
     city_title_desc: 'Kluby i konstelacje w tym mieście.',
@@ -1056,6 +1097,21 @@ const copy = {
     admin_recent_empty: 'Aucun avis approuvé.',
     clubs_page_title: 'Clubs',
     clubs_page_desc: 'Parcourez tous les clubs et leurs avis.',
+    club_submit_title: 'Soumettre un club',
+    club_submit_desc:
+      'Vous connaissez un club à ajouter ? Envoyez les détails pour validation.',
+    club_submit_name_label: 'Nom du club',
+    club_submit_city_label: 'Ville',
+    club_submit_country_label: 'Pays',
+    club_submit_website_label: 'Site',
+    club_submit_summary_label: 'Courte description',
+    club_submit_summary_placeholder: 'Expliquez ce qui rend ce club unique...',
+    club_submit_submit: 'Soumettre le club',
+    club_submit_submitting: 'Soumission...',
+    club_submit_signin_required: 'Connectez-vous pour soumettre un club.',
+    club_submit_status_pending: 'Club soumis pour modération.',
+    club_submit_status_error: 'Impossible de soumettre le club.',
+    club_submit_permission_error: 'Soumission bloquée par les règles Firestore.',
     city_breadcrumb_home: 'Accueil',
     city_breadcrumb_clubs: 'Clubs',
     city_title_desc: 'Clubs et constellations liés à cette ville.',
@@ -1346,6 +1402,23 @@ const copy = {
     admin_recent_empty: 'Keine freigegebenen Reviews.',
     clubs_page_title: 'Clubs',
     clubs_page_desc: 'Alle Clubs durchsuchen und Details öffnen.',
+    club_submit_title: 'Club vorschlagen',
+    club_submit_desc:
+      'Kennst du einen Club, den wir aufnehmen sollen? Sende die Details zur Prüfung.',
+    club_submit_name_label: 'Clubname',
+    club_submit_city_label: 'Stadt',
+    club_submit_country_label: 'Land',
+    club_submit_website_label: 'Website',
+    club_submit_summary_label: 'Kurzbeschreibung',
+    club_submit_summary_placeholder:
+      'Beschreibe, was diesen Club besonders macht...',
+    club_submit_submit: 'Club senden',
+    club_submit_submitting: 'Senden...',
+    club_submit_signin_required: 'Melde dich an, um einen Club vorzuschlagen.',
+    club_submit_status_pending: 'Club zur Moderation eingereicht.',
+    club_submit_status_error: 'Club konnte nicht gesendet werden.',
+    club_submit_permission_error:
+      'Club-Einreichung durch Firestore-Regeln blockiert.',
     city_breadcrumb_home: 'Start',
     city_breadcrumb_clubs: 'Clubs',
     city_title_desc: 'Clubs und Konstellationen in dieser Stadt.',
@@ -1635,6 +1708,23 @@ const copy = {
     admin_recent_empty: 'Nessuna recensione approvata.',
     clubs_page_title: 'Club',
     clubs_page_desc: 'Sfoglia i club e apri i dettagli.',
+    club_submit_title: 'Invia un club',
+    club_submit_desc:
+      'Conosci un club da aggiungere? Invia i dettagli per la revisione.',
+    club_submit_name_label: 'Nome del club',
+    club_submit_city_label: 'Città',
+    club_submit_country_label: 'Paese',
+    club_submit_website_label: 'Sito',
+    club_submit_summary_label: 'Breve descrizione',
+    club_submit_summary_placeholder:
+      'Racconta cosa rende speciale questo club...',
+    club_submit_submit: 'Invia il club',
+    club_submit_submitting: 'Invio...',
+    club_submit_signin_required: 'Accedi per inviare un club.',
+    club_submit_status_pending: 'Club inviato per moderazione.',
+    club_submit_status_error: 'Impossibile inviare il club.',
+    club_submit_permission_error:
+      'Invio del club bloccato dalle regole Firestore.',
     city_breadcrumb_home: 'Home',
     city_breadcrumb_clubs: 'Club',
     city_title_desc: 'Club e costellazioni legati a questa città.',
@@ -1925,6 +2015,22 @@ const copy = {
     admin_recent_empty: 'No hay reseñas aprobadas.',
     clubs_page_title: 'Clubes',
     clubs_page_desc: 'Explora clubes y abre los detalles.',
+    club_submit_title: 'Enviar un club',
+    club_submit_desc:
+      '¿Conoces un club que deberíamos añadir? Envía los detalles para revisión.',
+    club_submit_name_label: 'Nombre del club',
+    club_submit_city_label: 'Ciudad',
+    club_submit_country_label: 'País',
+    club_submit_website_label: 'Sitio',
+    club_submit_summary_label: 'Descripción corta',
+    club_submit_summary_placeholder: 'Cuenta qué hace especial a este club...',
+    club_submit_submit: 'Enviar club',
+    club_submit_submitting: 'Enviando...',
+    club_submit_signin_required: 'Inicia sesión para enviar un club.',
+    club_submit_status_pending: 'Club enviado para moderación.',
+    club_submit_status_error: 'No se pudo enviar el club.',
+    club_submit_permission_error:
+      'Envío de club bloqueado por reglas Firestore.',
     city_breadcrumb_home: 'Inicio',
     city_breadcrumb_clubs: 'Clubes',
     city_title_desc: 'Clubes y constelaciones en esta ciudad.',
@@ -1980,6 +2086,18 @@ const copy = {
 } as const
 
 const getCopy = (lang: Lang) => copy[lang] ?? copy.en
+
+const getLocalizedText = (value: LocalizedText | string, lang: Lang) => {
+  if (typeof value === 'string') {
+    return value
+  }
+  return value[lang] ?? value.en ?? ''
+}
+
+const getLocalizedList = (
+  values: Array<LocalizedText | string>,
+  lang: Lang
+) => values.map((value) => getLocalizedText(value, lang))
 
 const slugify = (value: string) =>
   value
@@ -2140,7 +2258,6 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
 const HomePage = () => {
   const {
     clubs,
-    websites,
     posts,
     pendingReviews,
     isAdmin,
@@ -2318,7 +2435,7 @@ const HomePage = () => {
               <h5>
                 <Link to={`/${lang}/clubs/${club.slug}`}>{club.name}</Link>
               </h5>
-              <p>{club.summary}</p>
+              <p>{getLocalizedText(club.summary, lang)}</p>
               <div className="meta-row">
                 <span>
                   {club.city ? `${club.city}, ` : ''}
@@ -2336,57 +2453,6 @@ const HomePage = () => {
         description={copy.map_desc}
       />
 
-      <section className="grid" id="websites">
-        <div className="section-title">
-          <h3>{copy.websites_title}</h3>
-          <p>{copy.websites_desc}</p>
-        </div>
-        <div className="cards">
-          <article className="card reveal">
-            <h4>{copy.websites_card1_title}</h4>
-            <p>{copy.websites_card1_body}</p>
-            <ul>
-              <li>{copy.websites_card1_item1}</li>
-              <li>{copy.websites_card1_item2}</li>
-              <li>{copy.websites_card1_item3}</li>
-            </ul>
-          </article>
-          <article className="card reveal">
-            <h4>{copy.websites_card2_title}</h4>
-            <p>{copy.websites_card2_body}</p>
-            <ul>
-              <li>{copy.websites_card2_item1}</li>
-              <li>{copy.websites_card2_item2}</li>
-              <li>{copy.websites_card2_item3}</li>
-            </ul>
-          </article>
-          <article className="card reveal">
-            <h4>{copy.websites_card3_title}</h4>
-            <p>{copy.websites_card3_body}</p>
-            <ul>
-              <li>{copy.websites_card3_item1}</li>
-              <li>{copy.websites_card3_item2}</li>
-              <li>{copy.websites_card3_item3}</li>
-            </ul>
-          </article>
-        </div>
-        <div className="website-grid">
-          {websites.map((site) => (
-            <article className="data-card reveal" key={site.name}>
-              <h5>{site.name}</h5>
-              <p>{site.summary}</p>
-              <div className="meta-row">
-                <span>{site.type}</span>
-                <span>{site.status}</span>
-              </div>
-              <a href={site.url} target="_blank" rel="noreferrer">
-                {copy.website_visit}
-              </a>
-            </article>
-          ))}
-        </div>
-      </section>
-
       <section className="feature" id="blog">
         <div className="section-title">
           <h3>{copy.blog_title}</h3>
@@ -2394,17 +2460,33 @@ const HomePage = () => {
         </div>
         <div className="blog-grid">
           {posts.length ? (
-            posts.map((post) => (
-              <article className="post reveal" key={`${post.title}-${post.date}`}>
-                <p className="post-date">{post.date}</p>
-                <h4>{post.title}</h4>
-                <p>{post.excerpt}</p>
-                <div className="post-meta">
-                  <span>{post.meta[0]}</span>
-                  <span>{post.meta[1]}</span>
-                </div>
-              </article>
-            ))
+            posts.map((post) => {
+              const meta = getLocalizedList(post.meta, lang)
+              const postDate = getLocalizedText(post.date, lang)
+              const postTitle = getLocalizedText(post.title, lang)
+              const postUrl = getLocalizedText(post.url, lang)
+              const postKey = `${getLocalizedText(post.title, 'en')}-${getLocalizedText(
+                post.date,
+                'en'
+              )}`
+              return (
+                <a
+                  className="post reveal"
+                  href={postUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  key={postKey}
+                >
+                  <p className="post-date">{postDate}</p>
+                  <h4>{postTitle}</h4>
+                  <p>{getLocalizedText(post.excerpt, lang)}</p>
+                  <div className="post-meta">
+                    <span>{meta[0]}</span>
+                    <span>{meta[1]}</span>
+                  </div>
+                </a>
+              )
+            })
           ) : (
             <p className="muted">{copy.blog_loading}</p>
           )}
@@ -3327,10 +3409,47 @@ const AdminPage = () => {
 }
 
 const ClubsPage = () => {
-  const { clubs } = useAppContext()
+  const { clubs, handleClubSubmit, authUser, firebaseConfigured } = useAppContext()
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
+  const [clubName, setClubName] = useState('')
+  const [clubCity, setClubCity] = useState('')
+  const [clubCountry, setClubCountry] = useState('')
+  const [clubWebsite, setClubWebsite] = useState('')
+  const [clubSummary, setClubSummary] = useState('')
+  const [clubStatus, setClubStatus] = useState('')
+  const [clubLoading, setClubLoading] = useState(false)
+
+  const canSubmitClub =
+    firebaseConfigured && authUser && clubName.trim().length > 1 && !clubLoading
+  const clubHeaderStatus =
+    clubStatus || (!authUser ? copy.club_submit_signin_required : copy.auth_sign_in_success)
+  const clubHeaderIsError =
+    !authUser ||
+    clubStatus === copy.club_submit_status_error ||
+    clubStatus === copy.club_submit_permission_error
+
+  const handleSubmitClub = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setClubLoading(true)
+    const result = await handleClubSubmit({
+      name: clubName,
+      city: clubCity,
+      country: clubCountry,
+      website: clubWebsite,
+      summary: clubSummary,
+    })
+    setClubStatus(result.message)
+    if (result.ok) {
+      setClubName('')
+      setClubCity('')
+      setClubCountry('')
+      setClubWebsite('')
+      setClubSummary('')
+    }
+    setClubLoading(false)
+  }
 
   return (
     <section className="feature">
@@ -3344,7 +3463,7 @@ const ClubsPage = () => {
             <h5>
               <Link to={`/${lang}/clubs/${club.slug}`}>{club.name}</Link>
             </h5>
-            <p>{club.summary}</p>
+            <p>{getLocalizedText(club.summary, lang)}</p>
             <div className="meta-row">
               <span>
                 {club.city ? `${club.city}, ` : ''}
@@ -3353,6 +3472,73 @@ const ClubsPage = () => {
             </div>
           </article>
         ))}
+      </div>
+      <div className="review-panel">
+        <div className="section-title">
+          <h3>{copy.club_submit_title}</h3>
+          <p>{copy.club_submit_desc}</p>
+        </div>
+        <form className="review-form" onSubmit={handleSubmitClub}>
+          <div className="review-form-header">
+            <p
+              className={
+                clubHeaderIsError ? 'review-status review-status--error' : 'review-status'
+              }
+            >
+              {clubHeaderStatus}
+            </p>
+          </div>
+          <label>
+            {copy.club_submit_name_label}
+            <input
+              className="register-input"
+              value={clubName}
+              onChange={(event) => setClubName(event.target.value)}
+              placeholder={copy.club_submit_name_label}
+            />
+          </label>
+          <label>
+            {copy.club_submit_city_label}
+            <input
+              className="register-input"
+              value={clubCity}
+              onChange={(event) => setClubCity(event.target.value)}
+              placeholder={copy.club_submit_city_label}
+            />
+          </label>
+          <label>
+            {copy.club_submit_country_label}
+            <input
+              className="register-input"
+              value={clubCountry}
+              onChange={(event) => setClubCountry(event.target.value)}
+              placeholder={copy.club_submit_country_label}
+            />
+          </label>
+          <label>
+            {copy.club_submit_website_label}
+            <input
+              className="register-input"
+              value={clubWebsite}
+              onChange={(event) => setClubWebsite(event.target.value)}
+              placeholder={copy.club_submit_website_label}
+            />
+          </label>
+          <label>
+            {copy.club_submit_summary_label}
+            <textarea
+              placeholder={copy.club_submit_summary_placeholder}
+              value={clubSummary}
+              onChange={(event) => setClubSummary(event.target.value)}
+            ></textarea>
+          </label>
+          <button className="cta" type="submit" disabled={!canSubmitClub}>
+            {clubLoading ? copy.club_submit_submitting : copy.club_submit_submit}
+          </button>
+          {clubStatus && clubStatus !== copy.auth_sign_in_success ? (
+            <p className="review-status">{clubStatus}</p>
+          ) : null}
+        </form>
       </div>
     </section>
   )
@@ -3394,7 +3580,7 @@ const CityPage = () => {
                   <h5>
                     <Link to={`/${lang}/clubs/${club.slug}`}>{club.name}</Link>
                   </h5>
-                  <p className="muted">{club.summary}</p>
+                  <p className="muted">{getLocalizedText(club.summary, lang)}</p>
                 </div>
               ))}
             </div>
@@ -3554,7 +3740,7 @@ const ClubDetail = () => {
       <div className="detail-grid">
         <div className="data-card detail-card">
           <h5>{copy.club_description}</h5>
-          <p>{club.summary}</p>
+          <p>{getLocalizedText(club.summary, lang)}</p>
         </div>
         <div className="data-card detail-card">
           <h5>{copy.club_info}</h5>
@@ -3792,7 +3978,7 @@ function App() {
     }
     const db = firestoreRef.current
     const approvedQuery = query(
-      collection(db, 'reviews'),
+      collection(db, 'reviews_submitted'),
       where('status', '==', 'approved')
     )
     const unsubscribeApproved = onSnapshot(approvedQuery, (snapshot) => {
@@ -3818,7 +4004,7 @@ function App() {
     let unsubscribePending: (() => void) | null = null
     if (isAdmin) {
       const pendingQuery = query(
-        collection(db, 'reviews'),
+        collection(db, 'reviews_submitted'),
         where('status', '==', 'pending')
       )
       unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
@@ -4105,7 +4291,7 @@ function App() {
       const authorLabel = anonymous
         ? languageCopy.review_author_anonymous
         : user.displayName || user.email || 'member'
-      await addDoc(collection(firestoreRef.current, 'reviews'), {
+      await addDoc(collection(firestoreRef.current, 'reviews_submitted'), {
         club_slug: club.slug,
         club_name: club.name,
         club_city: club.city || null,
@@ -4129,6 +4315,57 @@ function App() {
           ok: false,
           message: languageCopy.review_permission_error,
         }
+      }
+      return { ok: false, message }
+    }
+  }
+
+  const handleClubSubmit = async ({
+    name,
+    city,
+    country,
+    website,
+    summary,
+  }: {
+    name: string
+    city: string
+    country: string
+    website: string
+    summary: string
+  }) => {
+    if (!authRef.current || !firestoreRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const user = authRef.current.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.club_submit_signin_required }
+    }
+    if (!name.trim()) {
+      return { ok: false, message: languageCopy.club_submit_status_error }
+    }
+    try {
+      const normalizedName = name.trim()
+      await addDoc(collection(firestoreRef.current, 'clubs_submitted'), {
+        name: normalizedName,
+        slug: slugify(normalizedName),
+        city: city.trim() || null,
+        country: country.trim() || null,
+        website: website.trim() || null,
+        summary: summary.trim() || null,
+        status: 'pending',
+        author_uid: user.uid,
+        author_email: user.email || null,
+        author_name: user.displayName || null,
+        createdAt: serverTimestamp(),
+      })
+      return { ok: true, message: languageCopy.club_submit_status_pending }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.club_submit_status_error
+      if (message.toLowerCase().includes('permission')) {
+        return { ok: false, message: languageCopy.club_submit_permission_error }
       }
       return { ok: false, message }
     }
@@ -4230,7 +4467,7 @@ function App() {
     if (!firestoreRef.current || !authEmail) {
       return
     }
-    await updateDoc(doc(firestoreRef.current, 'reviews', reviewId), {
+    await updateDoc(doc(firestoreRef.current, 'reviews_submitted', reviewId), {
       status,
       reviewedAt: serverTimestamp(),
       reviewedBy: authEmail,
@@ -4258,6 +4495,7 @@ function App() {
     registerLoading,
     signInLoading,
     handleReviewSubmit,
+    handleClubSubmit,
     handleReviewModeration,
     pendingReviews,
     isAdmin,

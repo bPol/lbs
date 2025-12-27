@@ -2,22 +2,85 @@
   {
     "name": "Led By Swing",
     "url": "https://ledbyswing.com",
-    "type": "Blog",
-    "status": "Legacy",
-    "summary": "Original community blog with travel notes and club reviews."
+    "type": {
+      "en": "Blog",
+      "pl": "Blog",
+      "fr": "Blog",
+      "de": "Blog",
+      "it": "Blog",
+      "es": "Blog"
+    },
+    "status": {
+      "en": "Legacy",
+      "pl": "Archiwalne",
+      "fr": "Archives",
+      "de": "Archiv",
+      "it": "Archivio",
+      "es": "Archivo"
+    },
+    "summary": {
+      "en": "Original community blog with travel notes and club reviews.",
+      "pl": "Oryginalny blog społeczności z notatkami z podróży i recenzjami klubów.",
+      "fr": "Blog communautaire original avec notes de voyage et avis de clubs.",
+      "de": "Ursprünglicher Community-Blog mit Reisenotizen und Club-Reviews.",
+      "it": "Blog originale della community con note di viaggio e recensioni di club.",
+      "es": "Blog original de la comunidad con notas de viaje y reseñas de clubes."
+    }
   },
   {
     "name": "SDC.com",
     "url": "https://sdc.com",
-    "type": "Portal",
-    "status": "Legacy reference",
-    "summary": "Legacy portal review highlighted in the archive posts."
+    "type": {
+      "en": "Portal",
+      "pl": "Portal",
+      "fr": "Portail",
+      "de": "Portal",
+      "it": "Portale",
+      "es": "Portal"
+    },
+    "status": {
+      "en": "Legacy reference",
+      "pl": "Archiwalne odniesienie",
+      "fr": "Référence d'archives",
+      "de": "Archiv-Referenz",
+      "it": "Riferimento d'archivio",
+      "es": "Referencia de archivo"
+    },
+    "summary": {
+      "en": "Legacy portal review highlighted in the archive posts.",
+      "pl": "Recenzja archiwalnego portalu wyróżniona we wpisach archiwalnych.",
+      "fr": "Avis du portail d'archives mis en avant dans les articles archivés.",
+      "de": "Review eines Archiv-Portals, hervorgehoben in den Archivbeiträgen.",
+      "it": "Recensione del portale d'archivio evidenziata negli articoli archiviati.",
+      "es": "Reseña del portal de archivo destacada en las publicaciones archivadas."
+    }
   },
   {
     "name": "KitKat Club Berlin",
     "url": "https://kitkatclub.org",
-    "type": "Club site",
-    "status": "Featured",
-    "summary": "Reference site linked from the Berlin legacy story."
+    "type": {
+      "en": "Club site",
+      "pl": "Strona klubu",
+      "fr": "Site du club",
+      "de": "Clubseite",
+      "it": "Sito del club",
+      "es": "Sitio del club"
+    },
+    "status": {
+      "en": "Featured",
+      "pl": "Wyróżnione",
+      "fr": "À la une",
+      "de": "Hervorgehoben",
+      "it": "In evidenza",
+      "es": "Destacado"
+    },
+    "summary": {
+      "en": "Reference site linked from the Berlin legacy story.",
+      "pl": "Strona referencyjna podlinkowana w berlińskiej historii archiwalnej.",
+      "fr": "Site de référence lié à l'histoire d'archives de Berlin.",
+      "de": "Referenzseite, verlinkt in der Berliner Archivstory.",
+      "it": "Sito di riferimento collegato alla storia d'archivio di Berlino.",
+      "es": "Sitio de referencia enlazado desde la historia archivada de Berlín."
+    }
   }
 ]

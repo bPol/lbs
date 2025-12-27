@@ -2,7 +2,14 @@
   {
     "name": "Oops Barcelona",
     "slug": "oops-barcelona",
-    "summary": "A beautiful villa-style venue outside Barcelona with a pool area and strong architecture; quiet on a cold-night visit but full of potential when busier.",
+    "summary": {
+      "en": "A beautiful villa-style venue outside Barcelona with a pool area and strong architecture; quiet on a cold-night visit but full of potential when busier.",
+      "pl": "Piękna willowa miejscówka pod Barceloną z basenem i mocną architekturą; cicho w chłodny wieczór, ale z dużym potencjałem przy większym ruchu.",
+      "fr": "Belle villa près de Barcelone avec piscine et architecture marquante ; calme lors d'une visite par nuit froide, mais plein de potentiel quand c'est plus fréquenté.",
+      "de": "Schöne Villa außerhalb Barcelonas mit Poolbereich und starker Architektur; ruhig bei einem Besuch an einer kalten Nacht, aber mit viel Potenzial bei mehr Betrieb.",
+      "it": "Bella villa fuori Barcellona con piscina e forte carattere architettonico; tranquilla in una visita di notte fredda, ma con grande potenziale quando è più affollata.",
+      "es": "Bonita villa a las afueras de Barcelona con zona de piscina y arquitectura sólida; tranquila en una visita en noche fría, pero con mucho potencial cuando hay más gente."
+    },
     "city": "Barcelona",
     "country": "Spain",
     "country_code": "ES",
@@ -14,7 +21,14 @@
   {
     "name": "Lullaby Swing Club",
     "slug": "lullaby-swing-club",
-    "summary": "Warm, multi-room club focused on social nights and themed parties.",
+    "summary": {
+      "en": "Warm, multi-room club focused on social nights and themed parties.",
+      "pl": "Przytulny, wielosalonowy klub skupiony na wieczorach towarzyskich i imprezach tematycznych.",
+      "fr": "Club chaleureux à plusieurs salles, axé sur des soirées sociales et des fêtes à thème.",
+      "de": "Warmes Clubhaus mit mehreren Räumen, fokussiert auf gesellige Abende und Motto-Partys.",
+      "it": "Club accogliente con più sale, focalizzato su serate sociali e feste a tema.",
+      "es": "Club acogedor de varias salas, centrado en noches sociales y fiestas temáticas."
+    },
     "city": "Wroclaw",
     "country": "Poland",
     "country_code": "PL",
@@ -24,7 +38,14 @@
   {
     "name": "Le Sabbie Nere",
     "slug": "le-sabbie-nere",
-    "summary": "Coastal club with curated events and traveler-friendly hosting.",
+    "summary": {
+      "en": "Coastal club with curated events and traveler-friendly hosting.",
+      "pl": "Nadmorski klub z kuratorskimi wydarzeniami i gościnną obsługą dla podróżnych.",
+      "fr": "Club côtier avec événements soignés et accueil adapté aux voyageurs.",
+      "de": "Küstenclub mit kuratierten Events und reisefreundlicher Betreuung.",
+      "it": "Club costiero con eventi curati e accoglienza pensata per i viaggiatori.",
+      "es": "Club costero con eventos curados y una acogida amigable para viajeros."
+    },
     "city": "Catania",
     "country": "Italy",
     "country_code": "IT",
@@ -34,7 +55,14 @@
   {
     "name": "KitKat Club / Wasteland",
     "slug": "kitkat-wasteland",
-    "summary": "Berlin nightlife stop with immersive event programming and themed nights.",
+    "summary": {
+      "en": "Berlin nightlife stop with immersive event programming and themed nights.",
+      "pl": "Berliński przystanek nocnego życia z immersyjnym programem wydarzeń i nocami tematycznymi.",
+      "fr": "Étape berlinoise avec programmation immersive et soirées à thème.",
+      "de": "Berliner Nightlife-Spot mit immersivem Eventprogramm und Mottoabenden.",
+      "it": "Tappa della nightlife berlinese con programmazione immersiva e serate a tema.",
+      "es": "Parada de la noche berlinesa con programación inmersiva y noches temáticas."
+    },
     "city": "Berlin",
     "country": "Germany",
     "country_code": "DE",
@@ -44,7 +72,14 @@
   {
     "name": "Fantasy Swingers Club",
     "slug": "fantasy-swingers-club",
-    "summary": "Prague club review highlighting atmosphere, hosting, and layout.",
+    "summary": {
+      "en": "Prague club review highlighting atmosphere, hosting, and layout.",
+      "pl": "Praska recenzja klubu z naciskiem na atmosferę, obsługę i układ.",
+      "fr": "Avis sur un club de Prague mettant en avant l'ambiance, l'accueil et l'agencement.",
+      "de": "Prager Club-Review mit Fokus auf Atmosphäre, Gastgeber und Aufbau.",
+      "it": "Recensione di un club di Praga con focus su atmosfera, accoglienza e layout.",
+      "es": "Reseña de un club de Praga con énfasis en ambiente, acogida y distribución."
+    },
     "city": "Prague",
     "country": "Czech Republic",
     "country_code": "CZ",
@@ -54,14 +89,28 @@
   {
     "name": "Fun4Two",
     "slug": "fun4two",
-    "summary": "Club review covering venue vibe, programming, and community feel.",
+    "summary": {
+      "en": "Club review covering venue vibe, programming, and community feel.",
+      "pl": "Recenzja klubu obejmująca klimat miejsca, program i społeczność.",
+      "fr": "Avis sur le club couvrant l'ambiance du lieu, la programmation et l'esprit communautaire.",
+      "de": "Club-Review zu Stimmung, Programm und Community-Gefühl.",
+      "it": "Recensione del club su atmosfera del locale, programmazione e senso di comunità.",
+      "es": "Reseña del club sobre ambiente del lugar, programación y sentido de comunidad."
+    },
     "country": "Poland",
     "country_code": "PL"
   },
   {
     "name": "Bunker Swingers Club",
     "slug": "bunker-swingers-club",
-    "summary": "Prague club review with notes on structure and nightly flow.",
+    "summary": {
+      "en": "Prague club review with notes on structure and nightly flow.",
+      "pl": "Praska recenzja klubu z uwagami o układzie i przebiegu wieczoru.",
+      "fr": "Avis sur un club de Prague avec notes sur la structure et le déroulé de la soirée.",
+      "de": "Prager Club-Review mit Notizen zu Aufbau und Ablauf des Abends.",
+      "it": "Recensione di un club di Praga con note su struttura e ritmo della serata.",
+      "es": "Reseña de un club de Praga con notas sobre estructura y ritmo nocturno."
+    },
     "city": "Prague",
     "country": "Czech Republic",
     "country_code": "CZ",
@@ -71,7 +120,14 @@
   {
     "name": "Bordeaux Swing Club",
     "slug": "bordeaux-swing-club-lodz",
-    "summary": "Club review highlighting the Lodz community and hosted evenings.",
+    "summary": {
+      "en": "Club review highlighting the Lodz community and hosted evenings.",
+      "pl": "Recenzja klubu podkreślająca społeczność Łodzi i prowadzone wieczory.",
+      "fr": "Avis du club mettant en avant la communauté de Łódź et les soirées animées.",
+      "de": "Club-Review mit Fokus auf die Łódź-Community und moderierte Abende.",
+      "it": "Recensione del club che mette in luce la community di Łódź e le serate ospitate.",
+      "es": "Reseña del club destacando la comunidad de Łódź y las noches organizadas."
+    },
     "city": "Lodz",
     "country": "Poland",
     "country_code": "PL",
@@ -81,7 +137,14 @@
   {
     "name": "Le Boudoir",
     "slug": "le-boudoir",
-    "summary": "Premier private club with three floors, lavish playrooms, and a cocktail bar; members-only access.",
+    "summary": {
+      "en": "Premier private club with three floors, lavish playrooms, and a cocktail bar; members-only access.",
+      "pl": "Topowy klub prywatny z trzema piętrami, wystawnymi pokojami zabaw i barem koktajlowym; tylko dla członków.",
+      "fr": "Club privé de premier plan avec trois étages, playrooms luxueuses et bar à cocktails ; accès réservé aux membres.",
+      "de": "Erstklassiger Privatclub mit drei Etagen, luxuriösen Playrooms und Cocktailbar; nur für Mitglieder.",
+      "it": "Club privato di alto livello con tre piani, playroom lussuose e cocktail bar; accesso riservato ai soci.",
+      "es": "Club privado de primer nivel con tres plantas, salas de juego lujosas y coctelería; acceso solo para miembros."
+    },
     "city": "London",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -91,7 +154,14 @@
   {
     "name": "Purple Mamba",
     "slug": "purple-mamba",
-    "summary": "Intimate Midlands club known for a cozy, friendly atmosphere and weekly themed events.",
+    "summary": {
+      "en": "Intimate Midlands club known for a cozy, friendly atmosphere and weekly themed events.",
+      "pl": "Kameralny klub w Midlands znany z przytulnej, przyjaznej atmosfery i cotygodniowych imprez tematycznych.",
+      "fr": "Club intimiste des Midlands connu pour une atmosphère chaleureuse et des soirées à thème hebdomadaires.",
+      "de": "Intimer Midlands-Club, bekannt für gemütliche, freundliche Atmosphäre und wöchentliche Motto-Events.",
+      "it": "Club intimo nelle Midlands noto per atmosfera accogliente e eventi a tema settimanali.",
+      "es": "Club íntimo en Midlands, conocido por ambiente acogedor y eventos temáticos semanales."
+    },
     "city": "Nottingham",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -101,7 +171,14 @@
   {
     "name": "Townhouse",
     "slug": "townhouse-wirral",
-    "summary": "Four-storey venue with dungeons, hot tubs, and inclusive events for swingers and kink communities.",
+    "summary": {
+      "en": "Four-storey venue with dungeons, hot tubs, and inclusive events for swingers and kink communities.",
+      "pl": "Czteropiętrowy obiekt z lochami, jacuzzi i inkluzywnymi wydarzeniami dla społeczności swingers i kink.",
+      "fr": "Lieu sur quatre étages avec donjons, jacuzzis et événements inclusifs pour les communautés swinger et kink.",
+      "de": "Vierstöckige Location mit Dungeons, Whirlpools und inklusiven Events für Swinger- und Kink-Communitys.",
+      "it": "Location su quattro piani con dungeon, vasche idromassaggio ed eventi inclusivi per comunità swinger e kink.",
+      "es": "Local de cuatro plantas con mazmorras, jacuzzis y eventos inclusivos para comunidades swinger y kink."
+    },
     "city": "Wirral",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -111,7 +188,14 @@
   {
     "name": "Cupids",
     "slug": "cupids-manchester",
-    "summary": "Long-running swingers club with a dress-down policy and nightly events.",
+    "summary": {
+      "en": "Long-running swingers club with a dress-down policy and nightly events.",
+      "pl": "Działający od lat klub swingerski z luźnym dress code i wydarzeniami każdej nocy.",
+      "fr": "Club échangiste historique avec politique vestimentaire décontractée et événements nocturnes.",
+      "de": "Langjähriger Swingerclub mit legerem Dresscode und nächtlichen Events.",
+      "it": "Club scambisti storico con dress code informale ed eventi serali.",
+      "es": "Club swinger veterano con dress code informal y eventos nocturnos."
+    },
     "city": "Manchester",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -121,7 +205,14 @@
   {
     "name": "Within Temptation",
     "slug": "within-temptation-torquay",
-    "summary": "Seaside club with pool, sauna, themed rooms, and an inclusive, accessible setup.",
+    "summary": {
+      "en": "Seaside club with pool, sauna, themed rooms, and an inclusive, accessible setup.",
+      "pl": "Nadmorski klub z basenem, sauną, pokojami tematycznymi i inkluzywną, dostępną infrastrukturą.",
+      "fr": "Club en bord de mer avec piscine, sauna, salles à thème et un cadre inclusif et accessible.",
+      "de": "Club am Meer mit Pool, Sauna, Themenräumen und inklusivem, barrierearmem Setup.",
+      "it": "Club sul mare con piscina, sauna, stanze a tema e un ambiente inclusivo e accessibile.",
+      "es": "Club junto al mar con piscina, sauna, salas temáticas y un entorno inclusivo y accesible."
+    },
     "city": "Torquay",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -131,7 +222,14 @@
   {
     "name": "Adam & Eve's",
     "slug": "adam-eves-manchester",
-    "summary": "Swingers venue combined with a licensed sports bar, open daily with themed events.",
+    "summary": {
+      "en": "Swingers venue combined with a licensed sports bar, open daily with themed events.",
+      "pl": "Miejsce swingerskie połączone z licencjonowanym sport barem, otwarte codziennie z imprezami tematycznymi.",
+      "fr": "Lieu échangiste combiné à un bar sportif licencié, ouvert tous les jours avec soirées à thème.",
+      "de": "Swinger-Location kombiniert mit lizenzierter Sportbar, täglich geöffnet mit Motto-Events.",
+      "it": "Locale scambisti con bar sportivo autorizzato, aperto ogni giorno con serate a tema.",
+      "es": "Espacio swinger combinado con bar deportivo con licencia, abierto a diario con eventos temáticos."
+    },
     "city": "Manchester",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -141,7 +239,14 @@
   {
     "name": "Vanilla Alternative",
     "slug": "vanilla-alternative",
-    "summary": "Private members' club with large hot tub, playrooms, bar, and on-site accommodation.",
+    "summary": {
+      "en": "Private members' club with large hot tub, playrooms, bar, and on-site accommodation.",
+      "pl": "Prywatny klub członkowski z dużym jacuzzi, pokojami zabaw, barem i noclegiem na miejscu.",
+      "fr": "Club privé pour membres avec grand jacuzzi, playrooms, bar et hébergement sur place.",
+      "de": "Privater Mitgliederclub mit großem Whirlpool, Playrooms, Bar und Unterkunft vor Ort.",
+      "it": "Club privato per soci con grande idromassaggio, playroom, bar e alloggi in loco.",
+      "es": "Club privado para socios con gran jacuzzi, salas de juego, bar y alojamiento en el lugar."
+    },
     "city": "Bedford/Cambridgeshire",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -151,7 +256,14 @@
   {
     "name": "Penthouse Playrooms",
     "slug": "penthouse-playrooms",
-    "summary": "Large club with open play areas, private rooms, and a couples-only lounge.",
+    "summary": {
+      "en": "Large club with open play areas, private rooms, and a couples-only lounge.",
+      "pl": "Duży klub z otwartymi strefami zabaw, prywatnymi pokojami i salonem tylko dla par.",
+      "fr": "Grand club avec espaces de jeu ouverts, chambres privées et salon réservé aux couples.",
+      "de": "Großer Club mit offenen Play-Bereichen, privaten Zimmern und einer Lounge nur für Paare.",
+      "it": "Grande club con aree play aperte, stanze private e lounge solo per coppie.",
+      "es": "Gran club con zonas de juego abiertas, habitaciones privadas y salón solo para parejas."
+    },
     "city": "Dunstable",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -161,7 +273,14 @@
   {
     "name": "The Playgrounds",
     "slug": "the-playgrounds-derbyshire",
-    "summary": "Lifestyle lodge events in a private house, offering relaxed house-party energy.",
+    "summary": {
+      "en": "Lifestyle lodge events in a private house, offering relaxed house-party energy.",
+      "pl": "Wydarzenia lifestyle w prywatnym domu, z luźną energią domowej imprezy.",
+      "fr": "Événements lifestyle dans une maison privée, avec une ambiance décontractée de house party.",
+      "de": "Lifestyle-Events in einem Privathaus mit entspannter Hausparty-Atmosphäre.",
+      "it": "Eventi lifestyle in una casa privata, con l'energia rilassata di una house party.",
+      "es": "Eventos lifestyle en una casa privada, con energía relajada de fiesta en casa."
+    },
     "city": "Derbyshire",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -171,7 +290,14 @@
   {
     "name": "AbFab (Absolutely Fabulous)",
     "slug": "abfab",
-    "summary": "Daytime naturist spa and swingers club near Heathrow with extensive facilities.",
+    "summary": {
+      "en": "Daytime naturist spa and swingers club near Heathrow with extensive facilities.",
+      "pl": "Dzienne spa naturystyczne i klub swingerski koło Heathrow z rozbudowaną infrastrukturą.",
+      "fr": "Spa naturiste en journée et club échangiste près d'Heathrow avec de vastes installations.",
+      "de": "Tages-Naturisten-Spa und Swingerclub nahe Heathrow mit umfangreichen Einrichtungen.",
+      "it": "Spa naturista diurno e club scambisti vicino a Heathrow con servizi completi.",
+      "es": "Spa naturista diurno y club swinger cerca de Heathrow con amplias instalaciones."
+    },
     "city": "Heathrow",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -181,7 +307,14 @@
   {
     "name": "Swindon Swingers",
     "slug": "swindon-swingers",
-    "summary": "Straightforward club focused on Saturday events with clear online guidance.",
+    "summary": {
+      "en": "Straightforward club focused on Saturday events with clear online guidance.",
+      "pl": "Prosty klub skoncentrowany na sobotnich wydarzeniach z jasnymi wskazówkami online.",
+      "fr": "Club simple axé sur les événements du samedi, avec des consignes claires en ligne.",
+      "de": "Unkomplizierter Club mit Fokus auf Samstags-Events und klaren Online-Hinweisen.",
+      "it": "Club essenziale focalizzato sugli eventi del sabato con indicazioni online chiare.",
+      "es": "Club sencillo centrado en eventos del sábado con instrucciones claras en línea."
+    },
     "city": "Swindon",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -191,7 +324,14 @@
   {
     "name": "Pleasures",
     "slug": "pleasures-kent",
-    "summary": "Private house venue hosting themed Friday and Saturday parties with accommodation.",
+    "summary": {
+      "en": "Private house venue hosting themed Friday and Saturday parties with accommodation.",
+      "pl": "Prywatny dom organizujący tematyczne imprezy w piątki i soboty z noclegiem.",
+      "fr": "Maison privée accueillant des soirées à thème le vendredi et samedi avec hébergement.",
+      "de": "Privathaus-Location mit Themenpartys freitags und samstags sowie Übernachtung.",
+      "it": "Location in casa privata con feste a tema il venerdì e sabato e alloggio.",
+      "es": "Espacio en casa privada con fiestas temáticas viernes y sábado y alojamiento."
+    },
     "city": "Kent",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -201,7 +341,14 @@
   {
     "name": "Eureka",
     "slug": "eureka-kent",
-    "summary": "Naturist spa and swingers club with large grounds, pools, and 7-day access.",
+    "summary": {
+      "en": "Naturist spa and swingers club with large grounds, pools, and 7-day access.",
+      "pl": "Spa naturystyczne i klub swingerski z rozległym terenem, basenami i dostępem 7 dni w tygodniu.",
+      "fr": "Spa naturiste et club échangiste avec grands espaces, piscines et accès 7j/7.",
+      "de": "Naturisten-Spa und Swingerclub mit großem Gelände, Pools und 7-Tage-Zugang.",
+      "it": "Spa naturista e club scambisti con ampi spazi, piscine e accesso 7 giorni su 7.",
+      "es": "Spa naturista y club swinger con amplios terrenos, piscinas y acceso los 7 días."
+    },
     "city": "Kent",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -211,7 +358,14 @@
   {
     "name": "Chameleons",
     "slug": "chameleons-darlaston",
-    "summary": "Well-known club with multiple floors, operating in Darlaston and Newport.",
+    "summary": {
+      "en": "Well-known club with multiple floors, operating in Darlaston and Newport.",
+      "pl": "Znany klub z kilkoma piętrami, działający w Darlaston i Newport.",
+      "fr": "Club réputé à plusieurs niveaux, présent à Darlaston et Newport.",
+      "de": "Bekannter Club mit mehreren Etagen, tätig in Darlaston und Newport.",
+      "it": "Club noto su più piani, attivo a Darlaston e Newport.",
+      "es": "Club conocido con varias plantas, presente en Darlaston y Newport."
+    },
     "city": "Darlaston",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -221,7 +375,14 @@
   {
     "name": "Xtasia",
     "slug": "xtasia-west-bromwich",
-    "summary": "Long-established swingers and fetish venue with spa facilities and themed nights.",
+    "summary": {
+      "en": "Long-established swingers and fetish venue with spa facilities and themed nights.",
+      "pl": "Długo działające miejsce swingers i fetysz z zapleczem spa i nocami tematycznymi.",
+      "fr": "Lieu échangiste et fétichiste de longue date avec installations spa et soirées à thème.",
+      "de": "Lang etablierte Swinger- und Fetisch-Location mit Spa-Bereich und Motto-Nächten.",
+      "it": "Locale scambista e fetish di lunga data con spa e serate a tema.",
+      "es": "Local swinger y fetichista de larga trayectoria con spa y noches temáticas."
+    },
     "city": "West Bromwich",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -231,7 +392,14 @@
   {
     "name": "Liberty Elite",
     "slug": "liberty-elite",
-    "summary": "Upscale club and hotel with strict door policy and sophisticated ambience.",
+    "summary": {
+      "en": "Upscale club and hotel with strict door policy and sophisticated ambience.",
+      "pl": "Ekskluzywny klub i hotel z rygorystyczną selekcją przy wejściu i wyrafinowaną atmosferą.",
+      "fr": "Club et hôtel haut de gamme avec politique d'entrée stricte et ambiance raffinée.",
+      "de": "Gehobener Club und Hotel mit strikter Türpolitik und anspruchsvollem Ambiente.",
+      "it": "Club e hotel di alto livello con selezione rigorosa all'ingresso e ambiente sofisticato.",
+      "es": "Club y hotel de alta gama con política de entrada estricta y ambiente sofisticado."
+    },
     "city": "Lutterworth",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -241,7 +409,14 @@
   {
     "name": "La Chambre",
     "slug": "la-chambre-sheffield",
-    "summary": "Legendary family-run club with themed rooms and dungeon, closed in 2020.",
+    "summary": {
+      "en": "Legendary family-run club with themed rooms and dungeon, closed in 2020.",
+      "pl": "Legendarny rodzinny klub z pokojami tematycznymi i dungeonem, zamknięty w 2020.",
+      "fr": "Club familial légendaire avec salles à thème et donjon, fermé en 2020.",
+      "de": "Legendärer familiengeführter Club mit Themenräumen und Dungeon, 2020 geschlossen.",
+      "it": "Club leggendario a gestione familiare con stanze a tema e dungeon, chiuso nel 2020.",
+      "es": "Club legendario familiar con salas temáticas y mazmorra, cerrado en 2020."
+    },
     "city": "Sheffield",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -251,7 +426,14 @@
   {
     "name": "Club F / Kestrel Hydro",
     "slug": "club-f-kestrel-hydro",
-    "summary": "Naturist spa by day and swingers venue by night with pools, saunas, and chalets.",
+    "summary": {
+      "en": "Naturist spa by day and swingers venue by night with pools, saunas, and chalets.",
+      "pl": "Spa naturystyczne w dzień i miejsce swingerskie w nocy, z basenami, saunami i domkami.",
+      "fr": "Spa naturiste le jour et lieu échangiste la nuit, avec piscines, saunas et chalets.",
+      "de": "Tagsüber Naturisten-Spa, nachts Swinger-Location mit Pools, Saunen und Chalets.",
+      "it": "Spa naturista di giorno e locale scambista di notte, con piscine, saune e chalet.",
+      "es": "Spa naturista de día y local swinger de noche, con piscinas, saunas y chalets."
+    },
     "city": "Durham",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -261,7 +443,14 @@
   {
     "name": "Infusion",
     "slug": "infusion-blackpool",
-    "summary": "Couples-focused spa club with pool, sauna, themed play areas, and seaside vibe.",
+    "summary": {
+      "en": "Couples-focused spa club with pool, sauna, themed play areas, and seaside vibe.",
+      "pl": "Klub spa nastawiony na pary z basenem, sauną, tematycznymi strefami zabaw i nadmorskim klimatem.",
+      "fr": "Club spa axé sur les couples avec piscine, sauna, espaces de jeu à thème et ambiance balnéaire.",
+      "de": "Paarorientierter Spa-Club mit Pool, Sauna, Themen-Play-Bereichen und Küstenflair.",
+      "it": "Club spa per coppie con piscina, sauna, aree play a tema e vibe marittima.",
+      "es": "Club spa enfocado en parejas con piscina, sauna, zonas de juego temáticas y ambiente costero."
+    },
     "city": "Blackpool",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -271,7 +460,14 @@
   {
     "name": "Torture Garden",
     "slug": "torture-garden-london",
-    "summary": "World-famous fetish club night with theatrical events, strict dress code, and consent focus.",
+    "summary": {
+      "en": "World-famous fetish club night with theatrical events, strict dress code, and consent focus.",
+      "pl": "Światowej sławy nocny klub fetyszowy z teatralnymi wydarzeniami, rygorystycznym dress code i naciskiem na zgodę.",
+      "fr": "Soirée fetish mondialement connue avec événements théâtraux, dress code strict et priorité au consentement.",
+      "de": "Weltberühmte Fetisch-Clubnacht mit theatralen Events, strengem Dresscode und Consent-Fokus.",
+      "it": "Serata fetish famosa nel mondo con eventi teatrali, dress code rigoroso e focus sul consenso.",
+      "es": "Noche de club fetichista famosa mundialmente con eventos teatrales, dress code estricto y foco en el consentimiento."
+    },
     "city": "London",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -281,7 +477,14 @@
   {
     "name": "Killing Kittens",
     "slug": "killing-kittens",
-    "summary": "Elite members-only events known for luxurious venues, vetting, and women-led ethos.",
+    "summary": {
+      "en": "Elite members-only events known for luxurious venues, vetting, and women-led ethos.",
+      "pl": "Elitarne wydarzenia tylko dla członków, znane z luksusowych miejsc, selekcji i kobiecego przywództwa.",
+      "fr": "Événements élite réservés aux membres, connus pour leurs lieux luxueux, leur sélection et leur ethos dirigé par des femmes.",
+      "de": "Elitäre Mitglieder-Events, bekannt für luxuriöse Locations, strenges Vetting und eine von Frauen geführte Haltung.",
+      "it": "Eventi esclusivi per membri, noti per location lussuose, selezione e ethos guidato dalle donne.",
+      "es": "Eventos exclusivos para miembros, conocidos por sedes lujosas, selección y un enfoque liderado por mujeres."
+    },
     "city": "London",
     "country": "United Kingdom",
     "country_code": "GB",
@@ -291,7 +494,14 @@
   {
     "name": "La Messaline",
     "slug": "la-messaline",
-    "summary": "Iconic club echangiste near Paris with dance floor, alcoves, pool, and sauna.",
+    "summary": {
+      "en": "Iconic club echangiste near Paris with dance floor, alcoves, pool, and sauna.",
+      "pl": "Ikoniczny klub swingerski pod Paryżem z parkietem, alkowami, basenem i sauną.",
+      "fr": "Club échangiste iconique près de Paris avec piste de danse, alcôves, piscine et sauna.",
+      "de": "Ikonischer Swingerclub nahe Paris mit Tanzfläche, Nischen, Pool und Sauna.",
+      "it": "Club scambisti iconico vicino Parigi con pista da ballo, alcove, piscina e sauna.",
+      "es": "Club swinger icónico cerca de París con pista de baile, alcobas, piscina y sauna."
+    },
     "city": "Oinville-Saint-Liphard",
     "country": "France",
     "country_code": "FR",
@@ -301,7 +511,14 @@
   {
     "name": "360 Spa",
     "slug": "360-spa-toulouse",
-    "summary": "Large libertine spa-club with multiple jacuzzis, sauna, and private rooms.",
+    "summary": {
+      "en": "Large libertine spa-club with multiple jacuzzis, sauna, and private rooms.",
+      "pl": "Duży libertynski spa-klub z wieloma jacuzzi, sauną i prywatnymi pokojami.",
+      "fr": "Grand spa-club libertin avec plusieurs jacuzzis, sauna et chambres privées.",
+      "de": "Großer libertiner Spa-Club mit mehreren Whirlpools, Sauna und Privatzimmern.",
+      "it": "Grande spa-club libertino con più jacuzzi, sauna e stanze private.",
+      "es": "Gran spa-club libertino con varios jacuzzis, sauna y habitaciones privadas."
+    },
     "city": "Toulouse",
     "country": "France",
     "country_code": "FR",
@@ -311,7 +528,14 @@
   {
     "name": "Sun City",
     "slug": "sun-city-lyon",
-    "summary": "Huge club with waterfalls, sauna, hammam, and a strict nude policy.",
+    "summary": {
+      "en": "Huge club with waterfalls, sauna, hammam, and a strict nude policy.",
+      "pl": "Ogromny klub z wodospadami, sauną, hammamem i ścisłą polityką nagości.",
+      "fr": "Immense club avec cascades, sauna, hammam et politique de nudité stricte.",
+      "de": "Riesiger Club mit Wasserfällen, Sauna, Hammam und strenger Nacktpolitik.",
+      "it": "Club enorme con cascate, sauna, hammam e politica di nudità rigorosa.",
+      "es": "Club enorme con cascadas, sauna, hammam y política estricta de desnudez."
+    },
     "city": "Lyon",
     "country": "France",
     "country_code": "FR",
@@ -321,7 +545,14 @@
   {
     "name": "Vera's Club",
     "slug": "veras-club",
-    "summary": "Stylish club on the Atlantic coast with themed rooms and an elegant dress code.",
+    "summary": {
+      "en": "Stylish club on the Atlantic coast with themed rooms and an elegant dress code.",
+      "pl": "Stylowy klub na wybrzeżu Atlantyku z pokojami tematycznymi i eleganckim dress code.",
+      "fr": "Club élégant sur la côte Atlantique avec salles à thème et dress code raffiné.",
+      "de": "Stilvoller Club an der Atlantikküste mit Themenräumen und elegantem Dresscode.",
+      "it": "Club elegante sulla costa Atlantica con stanze a tema e dress code raffinato.",
+      "es": "Club elegante en la costa Atlántica con salas temáticas y dress code elegante."
+    },
     "city": "Saujon",
     "country": "France",
     "country_code": "FR",
@@ -331,7 +562,14 @@
   {
     "name": "Le Roi Rene",
     "slug": "le-roi-rene",
-    "summary": "Historic libertine venue near Paris, closed in the 2010s but legendary.",
+    "summary": {
+      "en": "Historic libertine venue near Paris, closed in the 2010s but legendary.",
+      "pl": "Historyczne miejsce libertynskie pod Paryżem, zamknięte w latach 2010., ale legendarne.",
+      "fr": "Lieu libertin historique près de Paris, fermé dans les années 2010 mais légendaire.",
+      "de": "Historische libertine Location nahe Paris, in den 2010ern geschlossen, aber legendär.",
+      "it": "Locale libertino storico vicino a Parigi, chiuso negli anni 2010 ma leggendario.",
+      "es": "Lugar libertino histórico cerca de París, cerrado en los 2010 pero legendario."
+    },
     "city": "Ville-d'Avray",
     "country": "France",
     "country_code": "FR",
@@ -341,7 +579,14 @@
   {
     "name": "Les Chandelles",
     "slug": "les-chandelles",
-    "summary": "Paris's most exclusive swingers club with strict dress code and discreet entry.",
+    "summary": {
+      "en": "Paris's most exclusive swingers club with strict dress code and discreet entry.",
+      "pl": "Najbardziej ekskluzywny klub swingerski Paryża z rygorystycznym dress code i dyskretnym wejściem.",
+      "fr": "Le club échangiste le plus exclusif de Paris avec dress code strict et entrée discrète.",
+      "de": "Pariser exklusivster Swingerclub mit strengem Dresscode und diskretem Eingang.",
+      "it": "Il club scambisti più esclusivo di Parigi con dress code rigoroso e ingresso discreto.",
+      "es": "El club swinger más exclusivo de París con dress code estricto y entrada discreta."
+    },
     "city": "Paris",
     "country": "France",
     "country_code": "FR",
@@ -351,7 +596,14 @@
   {
     "name": "Taken Club",
     "slug": "taken-club-paris",
-    "summary": "Modern Paris club offering an intimate, upscale setting with selective entry.",
+    "summary": {
+      "en": "Modern Paris club offering an intimate, upscale setting with selective entry.",
+      "pl": "Nowoczesny paryski klub oferujący kameralne, ekskluzywne wnętrza z selektywnym wejściem.",
+      "fr": "Club parisien moderne offrant un cadre intime et haut de gamme avec entrée sélective.",
+      "de": "Moderner Pariser Club mit intimem, gehobenem Ambiente und selektivem Eintritt.",
+      "it": "Club parigino moderno con ambiente intimo e di alto livello e ingresso selettivo.",
+      "es": "Club parisino moderno que ofrece un entorno íntimo y exclusivo con entrada selectiva."
+    },
     "city": "Paris",
     "country": "France",
     "country_code": "FR",
@@ -361,7 +613,14 @@
   {
     "name": "Le Glamour",
     "slug": "le-glamour-cap-d-agde",
-    "summary": "Beachfront Cap d'Agde club with pool, spa, and nude or erotic dress code.",
+    "summary": {
+      "en": "Beachfront Cap d'Agde club with pool, spa, and nude or erotic dress code.",
+      "pl": "Klub przy plaży w Cap d'Agde z basenem, spa i dress code nago lub erotyczny.",
+      "fr": "Club en bord de mer à Cap d'Agde avec piscine, spa et dress code nu ou érotique.",
+      "de": "Club am Strand in Cap d'Agde mit Pool, Spa und nackt/erotischem Dresscode.",
+      "it": "Club sul mare a Cap d'Agde con piscina, spa e dress code nude o erotico.",
+      "es": "Club frente a la playa en Cap d'Agde con piscina, spa y dress code desnudo o erótico."
+    },
     "city": "Cap d'Agde",
     "country": "France",
     "country_code": "FR",
@@ -371,7 +630,14 @@
   {
     "name": "Le Jardin d'Eden",
     "slug": "le-jardin-d-eden",
-    "summary": "Clothing-optional hotel-resort club in Cap d'Agde with pool parties and playrooms.",
+    "summary": {
+      "en": "Clothing-optional hotel-resort club in Cap d'Agde with pool parties and playrooms.",
+      "pl": "Hotelowy resort klubowy w Cap d'Agde z opcjonalną nagością, imprezami przy basenie i pokojami zabaw.",
+      "fr": "Hôtel-resort libertin à Cap d'Agde, nudité optionnelle, avec pool parties et playrooms.",
+      "de": "Clothing-optional Hotel-Resort-Club in Cap d'Agde mit Poolpartys und Playrooms.",
+      "it": "Hotel-resort club a Cap d'Agde con nudità opzionale, pool party e playroom.",
+      "es": "Club tipo hotel-resort en Cap d'Agde con ropa opcional, fiestas en la piscina y salas de juego."
+    },
     "city": "Cap d'Agde",
     "country": "France",
     "country_code": "FR",
@@ -381,7 +647,14 @@
   {
     "name": "Chateau des Lys",
     "slug": "chateau-des-lys",
-    "summary": "Grand chateau venue near Disneyland Paris, now occasional private events.",
+    "summary": {
+      "en": "Grand chateau venue near Disneyland Paris, now occasional private events.",
+      "pl": "Wielka posiadłość château pod Disneylandem Paris, dziś okazjonalne prywatne wydarzenia.",
+      "fr": "Grand château près de Disneyland Paris, aujourd'hui pour événements privés occasionnels.",
+      "de": "Großes Château nahe Disneyland Paris, heute für gelegentliche private Events.",
+      "it": "Grande château vicino a Disneyland Paris, oggi per eventi privati occasionali.",
+      "es": "Gran château cerca de Disneyland Paris, hoy para eventos privados ocasionales."
+    },
     "city": "Seine-et-Marne",
     "country": "France",
     "country_code": "FR",
@@ -391,7 +664,14 @@
   {
     "name": "L'Extasia",
     "slug": "l-extasia",
-    "summary": "Cap d'Agde favorite with large dance floor and indoor/outdoor play areas.",
+    "summary": {
+      "en": "Cap d'Agde favorite with large dance floor and indoor/outdoor play areas.",
+      "pl": "Ulubieniec Cap d'Agde z dużym parkietem i strefami zabaw wewnątrz i na zewnątrz.",
+      "fr": "Favori de Cap d'Agde avec grande piste de danse et espaces de jeu intérieur/extérieur.",
+      "de": "Cap d'Agde-Favorit mit großer Tanzfläche und Indoor/Outdoor-Play-Bereichen.",
+      "it": "Preferito a Cap d'Agde con ampia pista da ballo e aree play interne/esterne.",
+      "es": "Favorito en Cap d'Agde con gran pista de baile y zonas de juego interiores/exteriores."
+    },
     "city": "Cap d'Agde",
     "country": "France",
     "country_code": "FR",
@@ -401,7 +681,14 @@
   {
     "name": "L'Orphea",
     "slug": "l-orphea",
-    "summary": "Normandy club with jacuzzi, themed rooms, and a friendly reputation.",
+    "summary": {
+      "en": "Normandy club with jacuzzi, themed rooms, and a friendly reputation.",
+      "pl": "Normandzki klub z jacuzzi, pokojami tematycznymi i przyjazną reputacją.",
+      "fr": "Club de Normandie avec jacuzzi, salles à thème et réputation conviviale.",
+      "de": "Normandie-Club mit Whirlpool, Themenräumen und freundlichem Ruf.",
+      "it": "Club in Normandia con jacuzzi, stanze a tema e reputazione accogliente.",
+      "es": "Club de Normandía con jacuzzi, salas temáticas y reputación amistosa."
+    },
     "city": "Normandy",
     "country": "France",
     "country_code": "FR",
@@ -411,7 +698,14 @@
   {
     "name": "Aloha",
     "slug": "aloha-normandy",
-    "summary": "Modern Normandy club with a bar, dance area, and tropical-themed nights.",
+    "summary": {
+      "en": "Modern Normandy club with a bar, dance area, and tropical-themed nights.",
+      "pl": "Nowoczesny klub w Normandii z barem, strefą tańca i tropikalnymi nocami tematycznymi.",
+      "fr": "Club moderne en Normandie avec bar, espace danse et soirées à thème tropical.",
+      "de": "Moderner Normandie-Club mit Bar, Tanzfläche und tropischen Mottoabenden.",
+      "it": "Club moderno in Normandia con bar, area danza e serate a tema tropicale.",
+      "es": "Club moderno en Normandía con bar, zona de baile y noches temáticas tropicales."
+    },
     "city": "Portsmouth",
     "country": "France",
     "country_code": "FR",
@@ -421,7 +715,14 @@
   {
     "name": "L'Absolu",
     "slug": "l-absolu",
-    "summary": "Discreet Riviera club with terrace, pool, and upscale clientele.",
+    "summary": {
+      "en": "Discreet Riviera club with terrace, pool, and upscale clientele.",
+      "pl": "Dyskretny klub na Riwierze z tarasem, basenem i zamożną klientelą.",
+      "fr": "Club discret sur la Riviera avec terrasse, piscine et clientèle haut de gamme.",
+      "de": "Diskreter Riviera-Club mit Terrasse, Pool und gehobener Klientel.",
+      "it": "Club discreto in Riviera con terrazza, piscina e clientela di alto livello.",
+      "es": "Club discreto en la Riviera con terraza, piscina y clientela de alto nivel."
+    },
     "city": "French Riviera",
     "country": "France",
     "country_code": "FR",
@@ -431,7 +732,14 @@
   {
     "name": "L'Anonyme",
     "slug": "l-anonyme",
-    "summary": "Libertine restaurant-club combining dining, shows, and playrooms in the Var.",
+    "summary": {
+      "en": "Libertine restaurant-club combining dining, shows, and playrooms in the Var.",
+      "pl": "Libertynska restauracja-klub łącząca kolację, show i pokoje zabaw w regionie Var.",
+      "fr": "Restaurant-club libertin combinant dîner, shows et playrooms dans le Var.",
+      "de": "Libertiner Restaurant-Club im Var mit Dinner, Shows und Playrooms.",
+      "it": "Ristorante-club libertino nel Var che unisce cena, spettacoli e playroom.",
+      "es": "Restaurante-club libertino en Var que combina cena, shows y salas de juego."
+    },
     "city": "Var",
     "country": "France",
     "country_code": "FR",
@@ -441,7 +749,14 @@
   {
     "name": "Le Trapeze",
     "slug": "le-trapeze",
-    "summary": "Renowned Paris club with saunas, jacuzzis, and elegant themed nights.",
+    "summary": {
+      "en": "Renowned Paris club with saunas, jacuzzis, and elegant themed nights.",
+      "pl": "Znany paryski klub z saunami, jacuzzi i eleganckimi nocami tematycznymi.",
+      "fr": "Club parisien renommé avec saunas, jacuzzis et soirées à thème élégantes.",
+      "de": "Renommierter Pariser Club mit Saunen, Whirlpools und eleganten Mottoabenden.",
+      "it": "Club parigino rinomato con saune, jacuzzi e serate a tema eleganti.",
+      "es": "Club parisino reconocido con saunas, jacuzzis y noches temáticas elegantes."
+    },
     "city": "Paris",
     "country": "France",
     "country_code": "FR",
@@ -451,7 +766,14 @@
   {
     "name": "Insomnia",
     "slug": "insomnia-berlin",
-    "summary": "Neo-burlesque erotic nightclub with fetish events, dungeon areas, and strict dress code.",
+    "summary": {
+      "en": "Neo-burlesque erotic nightclub with fetish events, dungeon areas, and strict dress code.",
+      "pl": "Erotyczny klub nocny w stylu neo-burleski z wydarzeniami fetyszowymi, strefami dungeon i rygorystycznym dress code.",
+      "fr": "Nightclub érotique néo-burlesque avec événements fetish, zones donjon et dress code strict.",
+      "de": "Neo-Burlesque-Erotikclub mit Fetisch-Events, Dungeon-Bereichen und strengem Dresscode.",
+      "it": "Nightclub erotico neo-burlesque con eventi fetish, aree dungeon e dress code rigoroso.",
+      "es": "Club nocturno erótico neo-burlesque con eventos fetichistas, áreas de mazmorra y dress code estricto."
+    },
     "city": "Berlin",
     "country": "Germany",
     "country_code": "DE",
@@ -461,7 +783,14 @@
   {
     "name": "Lab.Oratory",
     "slug": "lab-oratory",
-    "summary": "Male-only gay fetish club with explicit themed nights and strict dress codes.",
+    "summary": {
+      "en": "Male-only gay fetish club with explicit themed nights and strict dress codes.",
+      "pl": "Męski gejowski klub fetyszowy z wyraźnymi nocami tematycznymi i ścisłym dress code.",
+      "fr": "Club fetish gay réservé aux hommes avec soirées à thème explicites et dress codes stricts.",
+      "de": "Männer-only Gay-Fetischclub mit expliziten Mottoabenden und strengen Dresscodes.",
+      "it": "Club fetish gay solo uomini con serate a tema esplicite e dress code rigidi.",
+      "es": "Club fetichista gay solo para hombres con noches temáticas explícitas y dress code estricto."
+    },
     "city": "Berlin",
     "country": "Germany",
     "country_code": "DE",
@@ -471,7 +800,14 @@
   {
     "name": "Schloss Milkersdorf",
     "slug": "schloss-milkersdorf",
-    "summary": "Lifestyle schloss hosting upscale couples events with suites and ballroom.",
+    "summary": {
+      "en": "Lifestyle schloss hosting upscale couples events with suites and ballroom.",
+      "pl": "Zamek lifestyle organizujący ekskluzywne wydarzenia dla par, z apartamentami i salą balową.",
+      "fr": "Schloss lifestyle accueillant des événements haut de gamme pour couples avec suites et salle de bal.",
+      "de": "Lifestyle-Schloss für gehobene Paarevents mit Suiten und Ballsaal.",
+      "it": "Castello lifestyle che ospita eventi di alto livello per coppie con suite e sala da ballo.",
+      "es": "Castillo lifestyle que alberga eventos exclusivos para parejas con suites y salón de baile."
+    },
     "city": "Brandenburg",
     "country": "Germany",
     "country_code": "DE",
@@ -481,7 +817,14 @@
   {
     "name": "Chateau Royal",
     "slug": "chateau-royal",
-    "summary": "Elegant couples-only villa club near Cologne/Bonn with playrooms and spa.",
+    "summary": {
+      "en": "Elegant couples-only villa club near Cologne/Bonn with playrooms and spa.",
+      "pl": "Elegancki klub w willi tylko dla par pod Kolonią/Bonn, z pokojami zabaw i spa.",
+      "fr": "Club-villa élégant réservé aux couples près de Cologne/Bonn avec playrooms et spa.",
+      "de": "Eleganter Villa-Club nur für Paare bei Köln/Bonn mit Playrooms und Spa.",
+      "it": "Club-villa elegante solo per coppie vicino Colonia/Bonn con playroom e spa.",
+      "es": "Club-villa elegante solo para parejas cerca de Colonia/Bonn con salas de juego y spa."
+    },
     "city": "Bad Honnef",
     "country": "Germany",
     "country_code": "DE",
@@ -491,7 +834,14 @@
   {
     "name": "FunPark Dorsten",
     "slug": "funpark-dorsten",
-    "summary": "Large NRW swinger venue with wellness facilities and big-party nights.",
+    "summary": {
+      "en": "Large NRW swinger venue with wellness facilities and big-party nights.",
+      "pl": "Duże miejsce swingerskie w NRW z zapleczem wellness i nocami dużych imprez.",
+      "fr": "Grand lieu swinger en NRW avec espace bien-être et soirées grand format.",
+      "de": "Große NRW-Swinger-Location mit Wellnessbereich und großen Party-Nächten.",
+      "it": "Grande locale swinger in NRW con area wellness e serate di grandi feste.",
+      "es": "Gran local swinger en NRW con instalaciones wellness y noches de grandes fiestas."
+    },
     "city": "Dorsten",
     "country": "Germany",
     "country_code": "DE",
@@ -501,7 +851,14 @@
   {
     "name": "Atmos Sauna-Club",
     "slug": "atmos-sauna-club",
-    "summary": "Hamburg spa-club blending naturist sauna culture with relaxed nightlife.",
+    "summary": {
+      "en": "Hamburg spa-club blending naturist sauna culture with relaxed nightlife.",
+      "pl": "Hamburski spa-klub łączący kulturę saun naturystycznych z luźnym nocnym życiem.",
+      "fr": "Spa-club hambourgeois mêlant culture sauna naturiste et nightlife détendue.",
+      "de": "Hamburger Spa-Club, der naturistische Saunakultur mit entspannter Nightlife verbindet.",
+      "it": "Spa-club di Amburgo che unisce cultura della sauna naturista e nightlife rilassata.",
+      "es": "Spa-club de Hamburgo que combina cultura de sauna naturista con vida nocturna relajada."
+    },
     "city": "Hamburg",
     "country": "Germany",
     "country_code": "DE",
@@ -511,7 +868,14 @@
   {
     "name": "Val d'Amour",
     "slug": "val-d-amour",
-    "summary": "Classic Brussels club prive with an intimate, welcoming atmosphere.",
+    "summary": {
+      "en": "Classic Brussels club prive with an intimate, welcoming atmosphere.",
+      "pl": "Klasyczny brukselski club privé z kameralną, gościnną atmosferą.",
+      "fr": "Club privé classique de Bruxelles avec une atmosphère intime et accueillante.",
+      "de": "Klassischer Brüsseler Club privé mit intimer, einladender Atmosphäre.",
+      "it": "Classico club privé di Bruxelles con atmosfera intima e accogliente.",
+      "es": "Clásico club privado de Bruselas con ambiente íntimo y acogedor."
+    },
     "city": "Brussels",
     "country": "Belgium",
     "country_code": "BE",
@@ -521,7 +885,14 @@
   {
     "name": "Funny Horse Club",
     "slug": "funny-horse-club",
-    "summary": "Quirky Brussels club with relaxed atmosphere, discretion, and security.",
+    "summary": {
+      "en": "Quirky Brussels club with relaxed atmosphere, discretion, and security.",
+      "pl": "Nietypowy klub w Brukseli z luźną atmosferą, dyskrecją i bezpieczeństwem.",
+      "fr": "Club bruxellois atypique avec ambiance détendue, discrétion et sécurité.",
+      "de": "Skurriler Brüsseler Club mit entspannter Atmosphäre, Diskretion und Sicherheit.",
+      "it": "Club particolare a Bruxelles con atmosfera rilassata, discrezione e sicurezza.",
+      "es": "Club peculiar en Bruselas con ambiente relajado, discreción y seguridad."
+    },
     "city": "Brussels",
     "country": "Belgium",
     "country_code": "BE",
@@ -531,7 +902,14 @@
   {
     "name": "Lotus Club",
     "slug": "lotus-club-luxembourg",
-    "summary": "Luxembourg private club with weekend events, sauna, and couple-only rooms.",
+    "summary": {
+      "en": "Luxembourg private club with weekend events, sauna, and couple-only rooms.",
+      "pl": "Luksemburski klub prywatny z wydarzeniami weekendowymi, sauną i pokojami tylko dla par.",
+      "fr": "Club privé au Luxembourg avec événements le week-end, sauna et salles réservées aux couples.",
+      "de": "Privatclub in Luxemburg mit Wochenend-Events, Sauna und Räumen nur für Paare.",
+      "it": "Club privato in Lussemburgo con eventi nel weekend, sauna e stanze solo per coppie.",
+      "es": "Club privado en Luxemburgo con eventos de fin de semana, sauna y salas solo para parejas."
+    },
     "city": "Luxembourg City",
     "country": "Luxembourg",
     "country_code": "LU",
@@ -541,7 +919,14 @@
   {
     "name": "Element6",
     "slug": "element6-vienna",
-    "summary": "Vienna swingers club praised for a cozy atmosphere and friendly staff.",
+    "summary": {
+      "en": "Vienna swingers club praised for a cozy atmosphere and friendly staff.",
+      "pl": "Wiedeński klub swingerski chwalony za przytulną atmosferę i miłą obsługę.",
+      "fr": "Club échangiste viennois apprécié pour son ambiance chaleureuse et son personnel sympathique.",
+      "de": "Wiener Swingerclub, gelobt für gemütliche Atmosphäre und freundliches Personal.",
+      "it": "Club scambisti di Vienna apprezzato per atmosfera accogliente e staff gentile.",
+      "es": "Club swinger de Viena valorado por su ambiente acogedor y personal amable."
+    },
     "city": "Vienna",
     "country": "Austria",
     "country_code": "AT",
@@ -551,7 +936,14 @@
   {
     "name": "Par i Hjartat",
     "slug": "par-i-hjartat",
-    "summary": "Members-only Stockholm-area club with bar, lounge, stage, and play spaces.",
+    "summary": {
+      "en": "Members-only Stockholm-area club with bar, lounge, stage, and play spaces.",
+      "pl": "Klub tylko dla członków w okolicach Sztokholmu z barem, lounge, sceną i strefami zabaw.",
+      "fr": "Club réservé aux membres dans la région de Stockholm avec bar, lounge, scène et espaces de jeu.",
+      "de": "Mitgliederclub im Raum Stockholm mit Bar, Lounge, Bühne und Play-Bereichen.",
+      "it": "Club solo per soci nell'area di Stoccolma con bar, lounge, palco e spazi play.",
+      "es": "Club solo para miembros en la zona de Estocolmo con bar, lounge, escenario y áreas de juego."
+    },
     "city": "Stockholm",
     "country": "Sweden",
     "country_code": "SE",
@@ -561,7 +953,14 @@
   {
     "name": "Paradise Club (Heaven Shifts)",
     "slug": "paradise-club-heaven-shifts",
-    "summary": "Formerly Sweden's largest swingers club with multiple play levels and active events.",
+    "summary": {
+      "en": "Formerly Sweden's largest swingers club with multiple play levels and active events.",
+      "pl": "Dawniej największy klub swingerski w Szwecji z wieloma poziomami play i aktywnymi wydarzeniami.",
+      "fr": "Ancien plus grand club échangiste de Suède avec plusieurs niveaux de jeu et des événements actifs.",
+      "de": "Ehemals größter Swingerclub Schwedens mit mehreren Play-Ebenen und aktiven Events.",
+      "it": "Un tempo il più grande club scambisti della Svezia con più livelli play e eventi attivi.",
+      "es": "Anteriormente el club swinger más grande de Suecia con varios niveles de juego y eventos activos."
+    },
     "city": "Eskilstuna",
     "country": "Sweden",
     "country_code": "SE",
@@ -571,7 +970,14 @@
   {
     "name": "Club Adam & Eva",
     "slug": "club-adam-eva",
-    "summary": "Modern swingers club in a rebuilt historic venue with bar, spa, and themed nights.",
+    "summary": {
+      "en": "Modern swingers club in a rebuilt historic venue with bar, spa, and themed nights.",
+      "pl": "Nowoczesny klub swingerski w odrestaurowanym historycznym obiekcie z barem, spa i nocami tematycznymi.",
+      "fr": "Club échangiste moderne dans un lieu historique rénové avec bar, spa et soirées à thème.",
+      "de": "Moderner Swingerclub in einem renovierten historischen Gebäude mit Bar, Spa und Mottoabenden.",
+      "it": "Club scambisti moderno in una sede storica ristrutturata con bar, spa e serate a tema.",
+      "es": "Club swinger moderno en un recinto histórico renovado con bar, spa y noches temáticas."
+    },
     "city": "Norrkoping",
     "country": "Sweden",
     "country_code": "SE",
@@ -581,7 +987,14 @@
   {
     "name": "Adam og Eva",
     "slug": "adam-og-eva",
-    "summary": "Denmark's oldest swingers club with a cozy, couples-oriented vibe.",
+    "summary": {
+      "en": "Denmark's oldest swingers club with a cozy, couples-oriented vibe.",
+      "pl": "Najstarszy klub swingerski w Danii z przytulnym klimatem nastawionym na pary.",
+      "fr": "Le plus ancien club échangiste du Danemark avec une ambiance cosy axée sur les couples.",
+      "de": "Dänemarks ältester Swingerclub mit gemütlicher, paarorientierter Atmosphäre.",
+      "it": "Il più antico club scambisti della Danimarca con un'atmosfera accogliente per coppie.",
+      "es": "El club swinger más antiguo de Dinamarca con un ambiente acogedor orientado a parejas."
+    },
     "city": "Copenhagen",
     "country": "Denmark",
     "country_code": "DK",
@@ -591,7 +1004,14 @@
   {
     "name": "Swingland",
     "slug": "swingland",
-    "summary": "Large member-run swingers association near Copenhagen, closed in 2018.",
+    "summary": {
+      "en": "Large member-run swingers association near Copenhagen, closed in 2018.",
+      "pl": "Duże stowarzyszenie swingerskie prowadzone przez członków koło Kopenhagi, zamknięte w 2018.",
+      "fr": "Grande association échangiste gérée par les membres près de Copenhague, fermée en 2018.",
+      "de": "Große, mitgliedergeführte Swinger-Vereinigung nahe Kopenhagen, 2018 geschlossen.",
+      "it": "Grande associazione scambista gestita dai membri vicino a Copenaghen, chiusa nel 2018.",
+      "es": "Gran asociación swinger gestionada por socios cerca de Copenhague, cerrada en 2018."
+    },
     "city": "Ishoj",
     "country": "Denmark",
     "country_code": "DK",
@@ -601,7 +1021,14 @@
   {
     "name": "Club More",
     "slug": "club-more-helsinki",
-    "summary": "Upscale swingers lounge focused on elegant experiences and private events.",
+    "summary": {
+      "en": "Upscale swingers lounge focused on elegant experiences and private events.",
+      "pl": "Ekskluzywny swingerski lounge skupiony na eleganckich doświadczeniach i prywatnych wydarzeniach.",
+      "fr": "Lounge échangiste haut de gamme axé sur des expériences élégantes et des événements privés.",
+      "de": "Gehobene Swinger-Lounge mit Fokus auf elegante Erlebnisse und private Events.",
+      "it": "Lounge scambisti di alto livello focalizzata su esperienze eleganti ed eventi privati.",
+      "es": "Lounge swinger de alta gama centrado en experiencias elegantes y eventos privados."
+    },
     "city": "Helsinki",
     "country": "Finland",
     "country_code": "FI",
@@ -611,7 +1038,14 @@
   {
     "name": "Training Pedralbes",
     "slug": "training-pedralbes",
-    "summary": "Exclusive Barcelona club with luxury lounges, jacuzzi, and selective membership.",
+    "summary": {
+      "en": "Exclusive Barcelona club with luxury lounges, jacuzzi, and selective membership.",
+      "pl": "Ekskluzywny klub w Barcelonie z luksusowymi lounge, jacuzzi i selektywnym członkostwem.",
+      "fr": "Club exclusif de Barcelone avec salons luxueux, jacuzzi et adhésion sélective.",
+      "de": "Exklusiver Club in Barcelona mit luxuriösen Lounges, Whirlpool und selektiver Mitgliedschaft.",
+      "it": "Club esclusivo a Barcellona con lounge di lusso, jacuzzi e membership selettiva.",
+      "es": "Club exclusivo en Barcelona con lounges de lujo, jacuzzi y membresía selectiva."
+    },
     "city": "Barcelona",
     "country": "Spain",
     "country_code": "ES",
@@ -621,7 +1055,14 @@
   {
     "name": "Libert Club",
     "slug": "libert-club-barcelona",
-    "summary": "Popular Barcelona club open nightly with bar, dance floor, and play spaces.",
+    "summary": {
+      "en": "Popular Barcelona club open nightly with bar, dance floor, and play spaces.",
+      "pl": "Popularny klub w Barcelonie otwarty nocą z barem, parkietem i strefami zabaw.",
+      "fr": "Club populaire à Barcelone ouvert chaque soir avec bar, piste de danse et espaces de jeu.",
+      "de": "Beliebter Barcelona-Club, täglich abends geöffnet mit Bar, Tanzfläche und Play-Spaces.",
+      "it": "Club popolare di Barcellona aperto ogni sera con bar, pista da ballo e spazi play.",
+      "es": "Club popular en Barcelona abierto cada noche con bar, pista de baile y espacios de juego."
+    },
     "city": "Barcelona",
     "country": "Spain",
     "country_code": "ES",
@@ -631,7 +1072,14 @@
   {
     "name": "Fusion VIP",
     "slug": "fusion-vip-madrid",
-    "summary": "Exclusive Madrid swingers lounge with reservation-based entry and themed rooms.",
+    "summary": {
+      "en": "Exclusive Madrid swingers lounge with reservation-based entry and themed rooms.",
+      "pl": "Ekskluzywny swingerski lounge w Madrycie z wejściem na rezerwację i pokojami tematycznymi.",
+      "fr": "Lounge échangiste exclusive à Madrid avec entrée sur réservation et salles à thème.",
+      "de": "Exklusive Swinger-Lounge in Madrid mit reservierungsbasiertem Eintritt und Themenräumen.",
+      "it": "Lounge scambisti esclusiva a Madrid con ingresso su prenotazione e stanze a tema.",
+      "es": "Lounge swinger exclusiva en Madrid con entrada por reserva y salas temáticas."
+    },
     "city": "Madrid",
     "country": "Spain",
     "country_code": "ES",
@@ -641,7 +1089,14 @@
   {
     "name": "Sala Trivial",
     "slug": "sala-trivial",
-    "summary": "Large Madrid club with jacuzzi, showers, and varied themed rooms.",
+    "summary": {
+      "en": "Large Madrid club with jacuzzi, showers, and varied themed rooms.",
+      "pl": "Duży klub w Madrycie z jacuzzi, prysznicami i różnorodnymi pokojami tematycznymi.",
+      "fr": "Grand club madrilène avec jacuzzi, douches et salles à thème variées.",
+      "de": "Großer Madrider Club mit Whirlpool, Duschen und abwechslungsreichen Themenräumen.",
+      "it": "Grande club a Madrid con jacuzzi, docce e stanze tematiche varie.",
+      "es": "Gran club en Madrid con jacuzzi, duchas y salas temáticas variadas."
+    },
     "city": "Madrid",
     "country": "Spain",
     "country_code": "ES",
@@ -651,7 +1106,14 @@
   {
     "name": "Venus Star Resort",
     "slug": "venus-star-resort",
-    "summary": "Swingers-only resort with bungalows, pool parties, nightclub, and spa.",
+    "summary": {
+      "en": "Swingers-only resort with bungalows, pool parties, nightclub, and spa.",
+      "pl": "Resort tylko dla swingersów z bungalowami, imprezami przy basenie, klubem nocnym i spa.",
+      "fr": "Resort réservé aux swingers avec bungalows, pool parties, nightclub et spa.",
+      "de": "Swinger-only-Resort mit Bungalows, Poolpartys, Nachtclub und Spa.",
+      "it": "Resort solo per swingers con bungalow, pool party, nightclub e spa.",
+      "es": "Resort solo para swingers con bungalows, fiestas en la piscina, club nocturno y spa."
+    },
     "city": "Maspalomas, Gran Canaria",
     "country": "Spain",
     "country_code": "ES",
@@ -661,7 +1123,14 @@
   {
     "name": "Spice Lifestyle Resort",
     "slug": "spice-lifestyle-resort",
-    "summary": "Pioneering swingers resort in Lanzarote, closed around 2020.",
+    "summary": {
+      "en": "Pioneering swingers resort in Lanzarote, closed around 2020.",
+      "pl": "Pionierski resort swingerski na Lanzarote, zamknięty około 2020.",
+      "fr": "Resort échangiste pionnier à Lanzarote, fermé vers 2020.",
+      "de": "Pionier-Swinger-Resort auf Lanzarote, um 2020 geschlossen.",
+      "it": "Resort scambista pionieristico a Lanzarote, chiuso intorno al 2020.",
+      "es": "Resort swinger pionero en Lanzarote, cerrado alrededor de 2020."
+    },
     "city": "Lanzarote",
     "country": "Spain",
     "country_code": "ES",
@@ -671,7 +1140,14 @@
   {
     "name": "Flirt Club",
     "slug": "flirt-club-rome",
-    "summary": "Luxury club prive for couples and single women with strict dress code.",
+    "summary": {
+      "en": "Luxury club prive for couples and single women with strict dress code.",
+      "pl": "Luksusowy club privé dla par i singielek z rygorystycznym dress code.",
+      "fr": "Club privé de luxe pour couples et femmes seules avec dress code strict.",
+      "de": "Luxuriöser Club privé für Paare und alleinstehende Frauen mit strengem Dresscode.",
+      "it": "Club privé di lusso per coppie e donne single con dress code rigoroso.",
+      "es": "Club privado de lujo para parejas y mujeres solas con dress code estricto."
+    },
     "city": "Rome",
     "country": "Italy",
     "country_code": "IT",
@@ -681,7 +1157,14 @@
   {
     "name": "Club Nautilus (Club Prive Milano)",
     "slug": "club-nautilus-milan",
-    "summary": "Long-running Milan club with dance floor, themed nights, and playrooms.",
+    "summary": {
+      "en": "Long-running Milan club with dance floor, themed nights, and playrooms.",
+      "pl": "Długo działający klub w Mediolanie z parkietem, nocami tematycznymi i pokojami zabaw.",
+      "fr": "Club milanais historique avec piste de danse, soirées à thème et playrooms.",
+      "de": "Langjähriger Mailänder Club mit Tanzfläche, Mottoabenden und Playrooms.",
+      "it": "Club milanese di lunga data con pista da ballo, serate a tema e playroom.",
+      "es": "Club milanés de larga trayectoria con pista de baile, noches temáticas y salas de juego."
+    },
     "city": "Milan",
     "country": "Italy",
     "country_code": "IT",
@@ -691,7 +1174,14 @@
   {
     "name": "Maison de l'Amour",
     "slug": "maison-de-l-amour",
-    "summary": "Milan club prive with refined ambiance, sauna, and private boudoirs.",
+    "summary": {
+      "en": "Milan club prive with refined ambiance, sauna, and private boudoirs.",
+      "pl": "Mediolański club privé z wyrafinowaną atmosferą, sauną i prywatnymi buduarami.",
+      "fr": "Club privé milanais avec ambiance raffinée, sauna et boudoirs privés.",
+      "de": "Mailänder Club privé mit elegantem Ambiente, Sauna und privaten Boudoirs.",
+      "it": "Club privé milanese con atmosfera raffinata, sauna e boudoir privati.",
+      "es": "Club privado milanés con ambiente refinado, sauna y boudoirs privados."
+    },
     "city": "Milan",
     "country": "Italy",
     "country_code": "IT",
@@ -701,7 +1191,14 @@
   {
     "name": "Capriccio Club",
     "slug": "capriccio-club",
-    "summary": "High-end Milan club with modern design, couples-only sections, and LED-lit spaces.",
+    "summary": {
+      "en": "High-end Milan club with modern design, couples-only sections, and LED-lit spaces.",
+      "pl": "Ekskluzywny klub w Mediolanie z nowoczesnym designem, strefami tylko dla par i podświetlanymi LED przestrzeniami.",
+      "fr": "Club haut de gamme à Milan avec design moderne, espaces réservés aux couples et zones éclairées par LED.",
+      "de": "Gehobener Mailänder Club mit modernem Design, Bereichen nur für Paare und LED-beleuchteten Flächen.",
+      "it": "Club di alto livello a Milano con design moderno, sezioni solo per coppie e spazi illuminati a LED.",
+      "es": "Club de alta gama en Milán con diseño moderno, secciones solo para parejas y espacios iluminados con LED."
+    },
     "city": "Milan",
     "country": "Italy",
     "country_code": "IT",
@@ -711,7 +1208,14 @@
   {
     "name": "Obidis Club",
     "slug": "obidis-club",
-    "summary": "Downtown Milan club with a friendly vibe, bar, dance area, and intimate rooms.",
+    "summary": {
+      "en": "Downtown Milan club with a friendly vibe, bar, dance area, and intimate rooms.",
+      "pl": "Klub w centrum Mediolanu z przyjaznym klimatem, barem, strefą tańca i kameralnymi pokojami.",
+      "fr": "Club du centre de Milan avec ambiance conviviale, bar, espace danse et chambres intimes.",
+      "de": "Club in der Mailänder Innenstadt mit freundlicher Atmosphäre, Bar, Tanzbereich und intimen Zimmern.",
+      "it": "Club nel centro di Milano con atmosfera amichevole, bar, area danza e stanze intime.",
+      "es": "Club en el centro de Milán con ambiente amistoso, bar, zona de baile y salas íntimas."
+    },
     "city": "Milan",
     "country": "Italy",
     "country_code": "IT",
@@ -721,7 +1225,14 @@
   {
     "name": "Harem Club Prive",
     "slug": "harem-club-prive",
-    "summary": "Large erotic sauna-club with wet spa, relaxation areas, and themed playrooms.",
+    "summary": {
+      "en": "Large erotic sauna-club with wet spa, relaxation areas, and themed playrooms.",
+      "pl": "Duży erotyczny klub-sauna z mokrym spa, strefami relaksu i tematycznymi pokojami zabaw.",
+      "fr": "Grand sauna-club érotique avec spa humide, zones de détente et playrooms à thème.",
+      "de": "Großer erotischer Sauna-Club mit Nass-Spa, Ruhebereichen und Themen-Playrooms.",
+      "it": "Grande sauna-club erotico con spa umida, aree relax e playroom a tema.",
+      "es": "Gran sauna-club erótico con spa húmedo, zonas de relax y salas de juego temáticas."
+    },
     "city": "Milan",
     "country": "Italy",
     "country_code": "IT",
@@ -731,7 +1242,14 @@
   {
     "name": "Sun Garden",
     "slug": "sun-garden-sezana",
-    "summary": "Slovenian swingers retreat with saunas, jacuzzi, and a relaxed weekend vibe.",
+    "summary": {
+      "en": "Slovenian swingers retreat with saunas, jacuzzi, and a relaxed weekend vibe.",
+      "pl": "Słoweński retreat swingerski z saunami, jacuzzi i luźnym weekendowym klimatem.",
+      "fr": "Retraite échangiste slovène avec saunas, jacuzzi et ambiance détendue le week-end.",
+      "de": "Slowenischer Swinger-Retreat mit Saunen, Whirlpool und entspannter Wochenendstimmung.",
+      "it": "Ritiro scambista sloveno con saune, jacuzzi e vibe rilassata da weekend.",
+      "es": "Retiro swinger esloveno con saunas, jacuzzi y ambiente relajado de fin de semana."
+    },
     "city": "Sezana",
     "country": "Slovenia",
     "country_code": "SI",
@@ -741,7 +1259,14 @@
   {
     "name": "Klub Margerita",
     "slug": "klub-margerita",
-    "summary": "Private nude sauna club in Nova Gorica welcoming swingers and themed nights.",
+    "summary": {
+      "en": "Private nude sauna club in Nova Gorica welcoming swingers and themed nights.",
+      "pl": "Prywatny klub saunowy nudystyczny w Nova Gorica, przyjazny swingersom i nocami tematycznymi.",
+      "fr": "Club sauna nudiste privé à Nova Gorica accueillant les swingers et des soirées à thème.",
+      "de": "Privater Nacktsauna-Club in Nova Gorica, der Swinger und Mottoabende begrüßt.",
+      "it": "Club sauna nudista privato a Nova Gorica che accoglie swingers e serate a tema.",
+      "es": "Club sauna nudista privado en Nova Gorica que acoge swingers y noches temáticas."
+    },
     "city": "Nova Gorica",
     "country": "Slovenia",
     "country_code": "SI",
@@ -751,7 +1276,14 @@
   {
     "name": "Black Diamond Club",
     "slug": "black-diamond-club",
-    "summary": "Private Belgrade club with discreet, invitation-led weekend events.",
+    "summary": {
+      "en": "Private Belgrade club with discreet, invitation-led weekend events.",
+      "pl": "Prywatny klub w Belgradzie z dyskretnymi, zaproszeniowymi wydarzeniami weekendowymi.",
+      "fr": "Club privé de Belgrade avec événements de week-end discrets sur invitation.",
+      "de": "Privater Belgrader Club mit diskreten Wochenend-Events auf Einladung.",
+      "it": "Club privato a Belgrado con eventi del weekend discreti su invito.",
+      "es": "Club privado en Belgrado con eventos de fin de semana discretos por invitación."
+    },
     "city": "Belgrade",
     "country": "Serbia",
     "country_code": "RS",
@@ -761,7 +1293,14 @@
   {
     "name": "EJ's Club",
     "slug": "ejs-club-dublin",
-    "summary": "Exclusive swingers party series in Dublin with vetted, themed monthly events.",
+    "summary": {
+      "en": "Exclusive swingers party series in Dublin with vetted, themed monthly events.",
+      "pl": "Ekskluzywna seria imprez swingerskich w Dublinie z weryfikowanymi, tematycznymi wydarzeniami co miesiąc.",
+      "fr": "Série de soirées échangistes exclusives à Dublin avec événements mensuels thématiques et sélection.",
+      "de": "Exklusive Swinger-Partyreihe in Dublin mit geprüften, monatlichen Motto-Events.",
+      "it": "Serie esclusiva di feste scambiste a Dublino con eventi mensili a tema e selezione.",
+      "es": "Serie exclusiva de fiestas swinger en Dublín con eventos mensuales temáticos y selección."
+    },
     "city": "Dublin",
     "country": "Ireland",
     "country_code": "IE",
