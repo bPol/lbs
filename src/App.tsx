@@ -252,6 +252,7 @@ type AppContext = {
   }) => Promise<{ ok: boolean; message: string }>
   handleReviewModeration: (reviewId: string, status: 'approved' | 'rejected') => Promise<void>
   pendingReviews: Review[]
+  pendingEventRsvps: EventRsvp[]
   isAdmin: boolean
   firebaseConfigured: boolean
   handleProfileLoad: () => Promise<{
@@ -321,6 +322,24 @@ const loadJson = async <T,>(path: string): Promise<T | null> => {
     console.warn(error)
     return null
   }
+}
+
+const parseEventRsvp = (data: Record<string, unknown>, id?: string): EventRsvp => {
+  const createdAt = data.created_at as { toDate?: () => Date } | undefined
+  return {
+    id,
+    event_slug: String(data.event_slug || ''),
+    user_uid: String(data.user_uid || ''),
+    user_name: String(data.user_name || ''),
+    user_email: String(data.user_email || ''),
+    category: (data.category as keyof EventCap) || 'couples',
+    status: (data.status as EventRsvp['status']) || 'Pending',
+    trust_badges: Array.isArray(data.trust_badges)
+      ? data.trust_badges.map((badge) => String(badge))
+      : [],
+    checkin_token: typeof data.checkin_token === 'string' ? data.checkin_token : '',
+    created_at: createdAt?.toDate?.()?.toISOString(),
+  } satisfies EventRsvp
 }
 
 const useRevealOnScroll = (deps: unknown[]) => {
@@ -716,6 +735,9 @@ const copy = {
     admin_no_pending: 'No pending reviews.',
     admin_recent_title: 'Recently approved',
     admin_recent_empty: 'No approved reviews yet.',
+    admin_events_title: 'Event moderation',
+    admin_events_desc: 'Review pending RSVPs across all events.',
+    admin_events_empty: 'No pending event RSVPs.',
     clubs_page_title: 'Clubs',
     clubs_page_desc:
       'Browse every club, then open a detail page for reviews and stories.',
@@ -1128,6 +1150,9 @@ const copy = {
     admin_no_pending: 'Brak oczekujących recenzji.',
     admin_recent_title: 'Ostatnio zatwierdzone',
     admin_recent_empty: 'Brak zatwierdzonych recenzji.',
+    admin_events_title: 'Moderacja wydarzeń',
+    admin_events_desc: 'Przeglądaj oczekujące RSVP dla wszystkich wydarzeń.',
+    admin_events_empty: 'Brak oczekujących RSVP do wydarzeń.',
     clubs_page_title: 'Kluby',
     clubs_page_desc: 'Przeglądaj kluby i otwieraj szczegóły.',
     club_submit_title: 'Zgłoś klub',
@@ -1542,6 +1567,9 @@ const copy = {
     admin_no_pending: 'Aucun avis en attente.',
     admin_recent_title: 'Approuvés récemment',
     admin_recent_empty: 'Aucun avis approuvé.',
+    admin_events_title: 'Modération des événements',
+    admin_events_desc: 'Examinez les RSVPs en attente pour tous les événements.',
+    admin_events_empty: "Aucun RSVP d'événement en attente.",
     clubs_page_title: 'Clubs',
     clubs_page_desc: 'Parcourez tous les clubs et leurs avis.',
     club_submit_title: 'Soumettre un club',
@@ -1955,6 +1983,9 @@ const copy = {
     admin_no_pending: 'Keine offenen Reviews.',
     admin_recent_title: 'Zuletzt freigegeben',
     admin_recent_empty: 'Keine freigegebenen Reviews.',
+    admin_events_title: 'Event-Moderation',
+    admin_events_desc: 'Prüfe ausstehende RSVPs für alle Events.',
+    admin_events_empty: 'Keine ausstehenden Event-RSVPs.',
     clubs_page_title: 'Clubs',
     clubs_page_desc: 'Alle Clubs durchsuchen und Details öffnen.',
     club_submit_title: 'Club vorschlagen',
@@ -2368,6 +2399,9 @@ const copy = {
     admin_no_pending: 'Nessuna recensione in attesa.',
     admin_recent_title: 'Approvate di recente',
     admin_recent_empty: 'Nessuna recensione approvata.',
+    admin_events_title: 'Moderazione eventi',
+    admin_events_desc: 'Rivedi le RSVP in sospeso per tutti gli eventi.',
+    admin_events_empty: 'Nessuna RSVP evento in sospeso.',
     clubs_page_title: 'Club',
     clubs_page_desc: 'Sfoglia i club e apri i dettagli.',
     club_submit_title: 'Invia un club',
@@ -2782,6 +2816,9 @@ const copy = {
     admin_no_pending: 'No hay reseñas pendientes.',
     admin_recent_title: 'Aprobadas recientemente',
     admin_recent_empty: 'No hay reseñas aprobadas.',
+    admin_events_title: 'Moderacion de eventos',
+    admin_events_desc: 'Revisa las RSVP pendientes de todos los eventos.',
+    admin_events_empty: 'No hay RSVP de eventos pendientes.',
     clubs_page_title: 'Clubes',
     clubs_page_desc: 'Explora clubes y abre los detalles.',
     club_submit_title: 'Enviar un club',
@@ -3129,6 +3166,9 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
   const [langValue, setLangValue] = useState(lang)
   const copy = getCopy(lang)
   const { isAdmin, authUser, handleAuthClick } = context
+  const registerState = {
+    from: `${location.pathname}${location.search}${location.hash}`,
+  }
 
   useEffect(() => {
     setLangValue(lang)
@@ -3190,7 +3230,11 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
           <Link to={`/${lang}/events`}>{copy.nav_events}</Link>
           <a href={`/${lang}#map`}>{copy.nav_map}</a>
           <Link to={`/${lang}/blog`}>{copy.nav_blog}</Link>
-          {!authUser ? <Link to={`/${lang}/register`}>{copy.nav_join}</Link> : null}
+          {!authUser ? (
+            <Link to={`/${lang}/register`} state={registerState}>
+              {copy.nav_join}
+            </Link>
+          ) : null}
           {isAdmin ? (
             <Link to={`/${lang}/admin`}>{copy.nav_admin}</Link>
           ) : null}
@@ -3208,7 +3252,7 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
             <option value="es">ES</option>
           </select>
           {!authUser ? (
-            <Link className="cta" to={`/${lang}/register`}>
+            <Link className="cta" to={`/${lang}/register`} state={registerState}>
               {copy.request_access}
             </Link>
           ) : (
@@ -3268,6 +3312,12 @@ const HomePage = () => {
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
+  const registerState = {
+    from: `${location.pathname}${location.search}${location.hash}`,
+  }
+  const registerState = {
+    from: `${location.pathname}${location.search}${location.hash}`,
+  }
   const highlightClubs = useMemo(() => {
     if (!clubs.length) {
       return []
@@ -3294,7 +3344,7 @@ const HomePage = () => {
           </p>
           <p className="lead">{copy.hero_paragraph}</p>
           <div className="hero-actions">
-            <Link className="cta" to={`/${lang}/register`}>
+            <Link className="cta" to={`/${lang}/register`} state={registerState}>
               {copy.hero_cta_primary}
             </Link>
             <button className="ghost">{copy.hero_cta_secondary}</button>
@@ -3677,9 +3727,17 @@ const RegisterPage = () => {
     email: '',
     password: '',
   })
+  const [pendingRedirect, setPendingRedirect] = useState<null | 'signin' | 'register'>(
+    null
+  )
   const location = useLocation()
+  const navigate = useNavigate()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
+  const redirectFrom = (location.state as { from?: string } | null)?.from
+  const fallbackRedirect = `/${lang}/profile`
+  const redirectTarget =
+    redirectFrom && !redirectFrom.includes('/register') ? redirectFrom : fallbackRedirect
 
   const handleGoogleRegisterClick = async () => {
     const result = await handleGoogleRegisterStart()
@@ -3718,6 +3776,7 @@ const RegisterPage = () => {
       consentPrivacy: registerForm.consentPrivacy,
       consentPolicy: registerForm.consentPolicy,
     }
+    setPendingRedirect('register')
     if (isGoogleRegister) {
       await handleGoogleRegister(registerDetails)
     } else {
@@ -3747,6 +3806,26 @@ const RegisterPage = () => {
     !underage &&
     !registerLoading
   const isRegisterSuccess = registerStatus === copy.register_status_success
+
+  useEffect(() => {
+    if (!authUser) {
+      return
+    }
+    if (isGoogleRegister && !isRegisterSuccess) {
+      return
+    }
+    if (pendingRedirect === 'register' && !isRegisterSuccess) {
+      return
+    }
+    navigate(redirectTarget, { replace: true })
+  }, [
+    authUser,
+    isGoogleRegister,
+    isRegisterSuccess,
+    pendingRedirect,
+    navigate,
+    redirectTarget,
+  ])
 
   return (
     <section className="feature">
@@ -4021,12 +4100,13 @@ const RegisterPage = () => {
             <button
               className="ghost"
               type="button"
-              onClick={() =>
+              onClick={() => {
+                setPendingRedirect('signin')
                 handleEmailSignIn({
                   email: signInForm.email,
                   password: signInForm.password,
                 })
-              }
+              }}
               disabled={
                 !firebaseConfigured ||
                 signInLoading ||
@@ -4039,7 +4119,10 @@ const RegisterPage = () => {
             <button
               className="ghost"
               type="button"
-              onClick={handleAuthClick}
+              onClick={() => {
+                setPendingRedirect('signin')
+                handleAuthClick()
+              }}
               disabled={!firebaseConfigured}
             >
               {authUser ? copy.auth_sign_out : copy.auth_sign_in_google}
@@ -4266,7 +4349,7 @@ const ProfilePage = () => {
           <h3>{copy.profile_page_title}</h3>
           <p>{copy.profile_signin_prompt}</p>
         </div>
-        <Link className="cta" to={`/${lang}/register`}>
+        <Link className="cta" to={`/${lang}/register`} state={registerState}>
           {copy.request_access}
         </Link>
       </section>
@@ -4814,6 +4897,9 @@ const AdminPage = () => {
     clubNames,
     verificationRequests,
     handleVerificationModeration,
+    pendingEventRsvps,
+    events,
+    handleEventRsvpUpdate,
   } = useAppContext()
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
@@ -4824,6 +4910,14 @@ const AdminPage = () => {
         (review) => review.status === 'approved' || review.status === 'published'
       ),
     [reviews]
+  )
+  const eventLookup = useMemo(
+    () =>
+      events.reduce<Record<string, Event>>((acc, event) => {
+        acc[event.slug] = event
+        return acc
+      }, {}),
+    [events]
   )
 
   if (!isAdmin) {
@@ -4955,6 +5049,71 @@ const AdminPage = () => {
           </div>
         ) : (
           <p className="muted">{copy.verification_admin_empty}</p>
+        )}
+      </div>
+      <div className="admin-panel">
+        <div className="admin-panel-header">
+          <h4>{copy.admin_events_title}</h4>
+          <p className="muted">{copy.admin_events_desc}</p>
+        </div>
+        {pendingEventRsvps.length ? (
+          <div className="admin-list">
+            {pendingEventRsvps.map((rsvp) => {
+              const event = eventLookup[rsvp.event_slug]
+              const categoryLabel =
+                rsvp.category === 'men'
+                  ? copy.event_cap_men
+                  : rsvp.category === 'women'
+                    ? copy.event_cap_women
+                    : copy.event_cap_couples
+              return (
+                <div
+                  className="admin-item"
+                  key={rsvp.id || `${rsvp.event_slug}-${rsvp.user_uid}`}
+                >
+                  <div className="admin-item-main">
+                    <p className="review-name">{rsvp.user_name}</p>
+                    <p className="muted">{rsvp.user_email}</p>
+                    <p className="muted">
+                      {event ? `${event.title} · ${event.date} · ${event.city}` : rsvp.event_slug}
+                    </p>
+                    <p className="admin-text">
+                      {copy.event_rsvp_category_label}: {categoryLabel}
+                    </p>
+                    {rsvp.trust_badges?.length ? (
+                      <div className="tag-row">
+                        {rsvp.trust_badges.map((badge) => (
+                          <span key={`${rsvp.user_uid}-${badge}`}>{badge}</span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="admin-actions">
+                    <button
+                      className="ghost"
+                      type="button"
+                      onClick={() =>
+                        rsvp.id ? handleEventRsvpUpdate(rsvp.id, 'Declined') : null
+                      }
+                    >
+                      {copy.event_guest_action_decline}
+                    </button>
+                    <button
+                      className="cta"
+                      type="button"
+                      onClick={() =>
+                        rsvp.id ? handleEventRsvpUpdate(rsvp.id, 'Approved') : null
+                      }
+                    >
+                      {copy.event_guest_action_approve}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="muted">{copy.admin_events_empty}</p>
         )}
       </div>
       <div className="admin-panel">
@@ -5609,6 +5768,9 @@ const HostDashboard = () => {
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
+  const registerState = {
+    from: `${location.pathname}${location.search}${location.hash}`,
+  }
   const hostEmail = authEmail?.toLowerCase()
   const [rsvpMap, setRsvpMap] = useState<Record<string, EventRsvp[]>>({})
 
@@ -5646,7 +5808,7 @@ const HostDashboard = () => {
           <h3>{copy.host_dashboard_title}</h3>
           <p>{copy.host_dashboard_signin}</p>
         </div>
-        <Link className="cta" to={`/${lang}/register`}>
+        <Link className="cta" to={`/${lang}/register`} state={registerState}>
           {copy.request_access}
         </Link>
       </section>
@@ -6082,6 +6244,7 @@ function App() {
   const [constellations, setConstellations] = useState<Constellation[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [events, setEvents] = useState<Event[]>([])
+  const [pendingEventRsvps, setPendingEventRsvps] = useState<EventRsvp[]>([])
   const [relationshipLinks, setRelationshipLinks] = useState<RelationshipLink[]>([])
   const [linksFromA, setLinksFromA] = useState<RelationshipLink[]>([])
   const [linksFromB, setLinksFromB] = useState<RelationshipLink[]>([])
@@ -6270,6 +6433,29 @@ function App() {
         } satisfies VerificationRequest
       })
       setVerificationRequests(next)
+    })
+
+    return () => unsubscribe()
+  }, [firebaseConfigured, isAdmin])
+
+  useEffect(() => {
+    if (!firebaseConfigured || !firestoreRef.current) {
+      return
+    }
+    if (!isAdmin) {
+      setPendingEventRsvps([])
+      return
+    }
+    const db = firestoreRef.current
+    const pendingRsvpsQuery = query(
+      collection(db, 'event_rsvps'),
+      where('status', '==', 'Pending')
+    )
+    const unsubscribe = onSnapshot(pendingRsvpsQuery, (snapshot) => {
+      const next = snapshot.docs.map((docSnap) =>
+        parseEventRsvp(docSnap.data() as Record<string, unknown>, docSnap.id)
+      )
+      setPendingEventRsvps(next)
     })
 
     return () => unsubscribe()
@@ -7107,24 +7293,9 @@ function App() {
       where('event_slug', '==', eventSlug)
     )
     return onSnapshot(rsvpQuery, (snapshot) => {
-      const next = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data() as Record<string, unknown>
-        const createdAt = data.created_at as { toDate?: () => Date } | undefined
-        return {
-          id: docSnap.id,
-          event_slug: String(data.event_slug || ''),
-          user_uid: String(data.user_uid || ''),
-          user_name: String(data.user_name || ''),
-          user_email: String(data.user_email || ''),
-          category: (data.category as keyof EventCap) || 'couples',
-          status: (data.status as EventRsvp['status']) || 'Pending',
-          trust_badges: Array.isArray(data.trust_badges)
-            ? data.trust_badges.map((badge) => String(badge))
-            : [],
-          checkin_token: typeof data.checkin_token === 'string' ? data.checkin_token : '',
-          created_at: createdAt?.toDate?.()?.toISOString(),
-        } satisfies EventRsvp
-      })
+      const next = snapshot.docs.map((docSnap) =>
+        parseEventRsvp(docSnap.data() as Record<string, unknown>, docSnap.id)
+      )
       onUpdate(next)
     })
   }
@@ -7269,6 +7440,7 @@ function App() {
     handleClubSubmit,
     handleReviewModeration,
     pendingReviews,
+    pendingEventRsvps,
     isAdmin,
     firebaseConfigured,
     handleProfileLoad,

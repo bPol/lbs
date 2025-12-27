@@ -52,12 +52,14 @@ service cloud.firestore {
     match /event_rsvps/{rsvpId} {
       allow read: if isSignedIn() &&
         (resource.data.user_uid == request.auth.uid ||
-          request.auth.token.email == resource.data.host_email);
+          request.auth.token.email == resource.data.host_email ||
+          isAdmin());
       allow create: if isSignedIn() &&
         request.resource.data.user_uid == request.auth.uid;
       allow update: if isSignedIn() &&
         (resource.data.user_uid == request.auth.uid ||
-          request.auth.token.email == resource.data.host_email);
+          request.auth.token.email == resource.data.host_email ||
+          isAdmin());
       allow delete: if isAdmin();
     }
 
