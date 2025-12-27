@@ -27,6 +27,7 @@ import {
   serverTimestamp,
   setDoc,
   doc,
+  getDoc,
   addDoc,
   collection,
   onSnapshot,
@@ -110,10 +111,26 @@ type AppContext = {
   authUser: string | null
   handleAuthClick: () => Promise<void>
   handleEmailSignIn: (details: { email: string; password: string }) => Promise<void>
+  handleGoogleRegisterStart: () => Promise<{
+    ok: boolean
+    message?: string
+    user?: { displayName: string; email: string }
+    birthDate?: string
+  }>
   handleRegister: (details: {
     displayName: string
     email: string
     password: string
+    birthDate: string
+    location: string
+    interests: string[]
+    consentAge: boolean
+    consentPrivacy: boolean
+    consentPolicy: boolean
+  }) => Promise<void>
+  handleGoogleRegister: (details: {
+    displayName: string
+    email: string
     birthDate: string
     location: string
     interests: string[]
@@ -129,6 +146,7 @@ type AppContext = {
     club: Club
     rating: number
     text: string
+    anonymous?: boolean
   }) => Promise<{ ok: boolean; message: string }>
   handleReviewModeration: (reviewId: string, status: 'approved' | 'rejected') => Promise<void>
   pendingReviews: Review[]
@@ -210,6 +228,9 @@ const copy = {
     nav_join: 'Join',
     nav_review: 'Review',
     nav_admin: 'Admin',
+    user_menu_label: 'Account',
+    user_menu_edit: 'Edit profile',
+    user_menu_signout: 'Sign out',
     request_access: 'Request Access',
     footer_tagline: 'Community home for users, constellations, clubs, and stories.',
     footer_guidelines: 'Guidelines & Terms',
@@ -262,6 +283,8 @@ const copy = {
     consent_policy_suffix: '.',
     register_create: 'Create account',
     register_creating: 'Creating account...',
+    register_google_cta: 'Create account with Google',
+    register_google_hint: "Use Google to skip password setup. We'll prefill your email.",
     auth_sign_in_google: 'Sign in with Google',
     auth_sign_out: 'Sign out',
     auth_status_setup: 'Sign-in setup required',
@@ -464,6 +487,9 @@ const copy = {
     review_permission_error: 'Review blocked by Firestore rules. Check permissions.',
     review_author_anonymous: 'anonymous',
     review_rating_status: 'Rating: {rating}/5 · Status: {status}',
+    review_identity_label: 'Post as',
+    review_identity_profile: 'Your profile',
+    review_identity_anonymous: 'Anonymous',
     status_pending: 'Pending',
     status_approved: 'Approved',
     status_rejected: 'Rejected',
@@ -487,6 +513,9 @@ const copy = {
     nav_join: 'Dołącz',
     nav_review: 'Recenzje',
     nav_admin: 'Admin',
+    user_menu_label: 'Konto',
+    user_menu_edit: 'Edytuj profil',
+    user_menu_signout: 'Wyloguj się',
     request_access: 'Poproś o dostęp',
     footer_tagline: 'Dom społeczności dla użytkowników, konstelacji, klubów i historii.',
     footer_guidelines: 'Wytyczne i regulamin',
@@ -539,6 +568,8 @@ const copy = {
     consent_policy_suffix: '.',
     register_create: 'Utwórz konto',
     register_creating: 'Tworzenie konta...',
+    register_google_cta: 'Utwórz konto przez Google',
+    register_google_hint: 'Użyj Google, aby pominąć hasło. Wypełnimy e-mail za Ciebie.',
     auth_sign_in_google: 'Zaloguj przez Google',
     auth_sign_out: 'Wyloguj',
     auth_status_setup: 'Wymagana konfiguracja logowania',
@@ -738,6 +769,9 @@ const copy = {
     review_permission_error: 'Recenzja zablokowana przez reguły Firestore.',
     review_author_anonymous: 'anonim',
     review_rating_status: 'Ocena: {rating}/5 · Status: {status}',
+    review_identity_label: 'Opublikuj jako',
+    review_identity_profile: 'Twój profil',
+    review_identity_anonymous: 'Anonim',
     status_pending: 'Oczekuje',
     status_approved: 'Zatwierdzona',
     status_rejected: 'Odrzucona',
@@ -761,6 +795,9 @@ const copy = {
     nav_join: 'Rejoindre',
     nav_review: 'Avis',
     nav_admin: 'Admin',
+    user_menu_label: 'Compte',
+    user_menu_edit: 'Modifier le profil',
+    user_menu_signout: 'Se déconnecter',
     request_access: "Demander l'accès",
     footer_tagline: 'Maison de la communauté pour utilisateurs, constellations, clubs et histoires.',
     footer_guidelines: 'Consignes et conditions',
@@ -813,6 +850,9 @@ const copy = {
     consent_policy_suffix: '.',
     register_create: 'Créer un compte',
     register_creating: 'Création...',
+    register_google_cta: 'Créer un compte avec Google',
+    register_google_hint:
+      "Utilisez Google pour éviter le mot de passe. Nous préremplirons l'email.",
     auth_sign_in_google: 'Se connecter avec Google',
     auth_sign_out: 'Se déconnecter',
     auth_status_setup: 'Configuration requise',
@@ -1012,6 +1052,9 @@ const copy = {
     review_permission_error: "Avis bloqué par les règles Firestore.",
     review_author_anonymous: 'anonyme',
     review_rating_status: 'Note : {rating}/5 · Statut : {status}',
+    review_identity_label: 'Publier en tant que',
+    review_identity_profile: 'Votre profil',
+    review_identity_anonymous: 'Anonyme',
     status_pending: 'En attente',
     status_approved: 'Approuvé',
     status_rejected: 'Refusé',
@@ -1035,6 +1078,9 @@ const copy = {
     nav_join: 'Beitreten',
     nav_review: 'Reviews',
     nav_admin: 'Admin',
+    user_menu_label: 'Konto',
+    user_menu_edit: 'Profil bearbeiten',
+    user_menu_signout: 'Abmelden',
     request_access: 'Zugang anfordern',
     footer_tagline: 'Community-Zuhause für Nutzer, Konstellationen, Clubs und Stories.',
     footer_guidelines: 'Richtlinien & Bedingungen',
@@ -1087,6 +1133,9 @@ const copy = {
     consent_policy_suffix: '.',
     register_create: 'Konto erstellen',
     register_creating: 'Konto wird erstellt...',
+    register_google_cta: 'Konto mit Google erstellen',
+    register_google_hint:
+      'Nutze Google, um kein Passwort zu brauchen. Wir füllen die E-Mail vorab aus.',
     auth_sign_in_google: 'Mit Google anmelden',
     auth_sign_out: 'Abmelden',
     auth_status_setup: 'Anmeldung muss konfiguriert werden',
@@ -1286,6 +1335,9 @@ const copy = {
     review_permission_error: 'Review durch Firestore-Regeln blockiert.',
     review_author_anonymous: 'anonym',
     review_rating_status: 'Bewertung: {rating}/5 · Status: {status}',
+    review_identity_label: 'Veröffentlichen als',
+    review_identity_profile: 'Dein Profil',
+    review_identity_anonymous: 'Anonym',
     status_pending: 'Ausstehend',
     status_approved: 'Genehmigt',
     status_rejected: 'Abgelehnt',
@@ -1309,6 +1361,9 @@ const copy = {
     nav_join: 'Unisciti',
     nav_review: 'Recensioni',
     nav_admin: 'Admin',
+    user_menu_label: 'Account',
+    user_menu_edit: 'Modifica profilo',
+    user_menu_signout: 'Esci',
     request_access: 'Richiedi accesso',
     footer_tagline: 'Casa della community per utenti, costellazioni, club e storie.',
     footer_guidelines: 'Linee guida e termini',
@@ -1361,6 +1416,8 @@ const copy = {
     consent_policy_suffix: '.',
     register_create: 'Crea account',
     register_creating: 'Creazione...',
+    register_google_cta: 'Crea un account con Google',
+    register_google_hint: "Usa Google per evitare la password. Precompiliamo l'email.",
     auth_sign_in_google: 'Accedi con Google',
     auth_sign_out: 'Esci',
     auth_status_setup: 'Configurazione accesso richiesta',
@@ -1560,6 +1617,9 @@ const copy = {
     review_permission_error: 'Recensione bloccata dalle regole Firestore.',
     review_author_anonymous: 'anonimo',
     review_rating_status: 'Valutazione: {rating}/5 · Stato: {status}',
+    review_identity_label: 'Pubblica come',
+    review_identity_profile: 'Il tuo profilo',
+    review_identity_anonymous: 'Anonimo',
     status_pending: 'In attesa',
     status_approved: 'Approvata',
     status_rejected: 'Rifiutata',
@@ -1583,6 +1643,9 @@ const copy = {
     nav_join: 'Unirse',
     nav_review: 'Reseñas',
     nav_admin: 'Admin',
+    user_menu_label: 'Cuenta',
+    user_menu_edit: 'Editar perfil',
+    user_menu_signout: 'Cerrar sesión',
     request_access: 'Solicitar acceso',
     footer_tagline: 'Hogar de la comunidad para usuarios, constelaciones, clubes e historias.',
     footer_guidelines: 'Guías y términos',
@@ -1635,6 +1698,9 @@ const copy = {
     consent_policy_suffix: '.',
     register_create: 'Crear cuenta',
     register_creating: 'Creando...',
+    register_google_cta: 'Crear cuenta con Google',
+    register_google_hint:
+      'Usa Google para evitar la contraseña. Completamos el correo electrónico.',
     auth_sign_in_google: 'Iniciar sesión con Google',
     auth_sign_out: 'Cerrar sesión',
     auth_status_setup: 'Se requiere configuración de acceso',
@@ -1834,6 +1900,9 @@ const copy = {
     review_permission_error: 'Reseña bloqueada por reglas Firestore.',
     review_author_anonymous: 'anónimo',
     review_rating_status: 'Calificación: {rating}/5 · Estado: {status}',
+    review_identity_label: 'Publicar como',
+    review_identity_profile: 'Tu perfil',
+    review_identity_anonymous: 'Anónimo',
     status_pending: 'Pendiente',
     status_approved: 'Aprobada',
     status_rejected: 'Rechazada',
@@ -1881,7 +1950,7 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
   const lang = getLangFromPath(location.pathname)
   const [langValue, setLangValue] = useState(lang)
   const copy = getCopy(lang)
-  const { isAdmin } = context
+  const { isAdmin, authUser, handleAuthClick } = context
 
   useEffect(() => {
     setLangValue(lang)
@@ -1942,7 +2011,7 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
           <Link to={`/${lang}/clubs`}>{copy.nav_clubs}</Link>
           <a href={`/${lang}#map`}>{copy.nav_map}</a>
           <a href={`/${lang}#blog`}>{copy.nav_blog}</a>
-          <Link to={`/${lang}/register`}>{copy.nav_join}</Link>
+          {!authUser ? <Link to={`/${lang}/register`}>{copy.nav_join}</Link> : null}
           {isAdmin ? (
             <Link to={`/${lang}/admin`}>{copy.nav_admin}</Link>
           ) : null}
@@ -1959,9 +2028,31 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
             <option value="it">IT</option>
             <option value="es">ES</option>
           </select>
-          <Link className="cta" to={`/${lang}/register`}>
-            {copy.request_access}
-          </Link>
+          {!authUser ? (
+            <Link className="cta" to={`/${lang}/register`}>
+              {copy.request_access}
+            </Link>
+          ) : (
+            <details className="user-menu">
+              <summary className="user-button" aria-label={copy.user_menu_label}>
+                <span className="user-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path
+                      d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.3c-3.1 0-9.1 1.6-9.1 4.7V22h18.2v-3c0-3.1-6-4.7-9.1-4.7z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </span>
+                <span className="user-name">{authUser}</span>
+              </summary>
+              <div className="user-dropdown">
+                <Link to={`/${lang}/register`}>{copy.user_menu_edit}</Link>
+                <button type="button" onClick={handleAuthClick}>
+                  {copy.user_menu_signout}
+                </button>
+              </div>
+            </details>
+          )}
         </nav>
       </header>
 
@@ -1996,6 +2087,20 @@ const HomePage = () => {
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
+  const highlightClubs = useMemo(() => {
+    if (!clubs.length) {
+      return []
+    }
+    const shuffled = [...clubs]
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1))
+      ;[shuffled[index], shuffled[swapIndex]] = [
+        shuffled[swapIndex],
+        shuffled[index],
+      ]
+    }
+    return shuffled.slice(0, 10)
+  }, [clubs])
 
   return (
     <>
@@ -2136,8 +2241,10 @@ const HomePage = () => {
             <p>{copy.clubs_highlights_body}</p>
           </div>
           <div className="legacy-tags">
-            {clubs.length ? (
-              clubs.map((club) => <span key={club.slug}>{club.name}</span>)
+            {highlightClubs.length ? (
+              highlightClubs.map((club) => (
+                <span key={club.slug}>{club.name}</span>
+              ))
             ) : (
               <span>{copy.clubs_loading}</span>
             )}
@@ -2352,7 +2459,9 @@ const RegisterPage = () => {
     authUser,
     handleAuthClick,
     handleEmailSignIn,
+    handleGoogleRegisterStart,
     handleRegister,
+    handleGoogleRegister,
     registerStatus,
     signInStatus,
     registerLoading,
@@ -2371,6 +2480,7 @@ const RegisterPage = () => {
     consentPrivacy: true,
     consentPolicy: false,
   })
+  const [isGoogleRegister, setIsGoogleRegister] = useState(false)
   const [signInForm, setSignInForm] = useState({
     email: '',
     password: '',
@@ -2379,18 +2489,33 @@ const RegisterPage = () => {
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
 
+  const handleGoogleRegisterClick = async () => {
+    const result = await handleGoogleRegisterStart()
+    if (!result.ok) {
+      return
+    }
+    setIsGoogleRegister(true)
+    setRegisterForm((prev) => ({
+      ...prev,
+      displayName: prev.displayName || result.user?.displayName || '',
+      email: prev.email || result.user?.email || '',
+      birthDate: prev.birthDate || result.birthDate || '',
+      password: '',
+      confirmPassword: '',
+    }))
+  }
+
   const handleRegisterSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (registerForm.password !== registerForm.confirmPassword) {
+    if (!isGoogleRegister && registerForm.password !== registerForm.confirmPassword) {
       return
     }
     if (!registerForm.birthDate || !isAdult(registerForm.birthDate)) {
       return
     }
-    await handleRegister({
+    const registerDetails = {
       displayName: registerForm.displayName.trim(),
       email: registerForm.email.trim(),
-      password: registerForm.password,
       birthDate: registerForm.birthDate,
       location: registerForm.location.trim(),
       interests: registerForm.interests
@@ -2400,27 +2525,36 @@ const RegisterPage = () => {
       consentAge: registerForm.consentAge,
       consentPrivacy: registerForm.consentPrivacy,
       consentPolicy: registerForm.consentPolicy,
-    })
+    }
+    if (isGoogleRegister) {
+      await handleGoogleRegister(registerDetails)
+    } else {
+      await handleRegister({ ...registerDetails, password: registerForm.password })
+    }
   }
 
   const passwordMismatch =
+    !isGoogleRegister &&
     registerForm.password.length > 0 &&
     registerForm.confirmPassword.length > 0 &&
     registerForm.password !== registerForm.confirmPassword
   const underage =
     registerForm.birthDate.length > 0 && !isAdult(registerForm.birthDate)
+  const passwordReady =
+    isGoogleRegister ||
+    (registerForm.password.length >= 8 && registerForm.confirmPassword.length >= 8)
   const canSubmit =
     firebaseConfigured &&
     registerForm.displayName.trim().length > 0 &&
     registerForm.email.trim().length > 0 &&
-    registerForm.password.length >= 8 &&
-    registerForm.confirmPassword.length >= 8 &&
+    passwordReady &&
     registerForm.birthDate.length > 0 &&
     registerForm.consentAge &&
     registerForm.consentPolicy &&
     !passwordMismatch &&
     !underage &&
     !registerLoading
+  const isRegisterSuccess = registerStatus === copy.register_status_success
 
   return (
     <section className="feature">
@@ -2429,207 +2563,224 @@ const RegisterPage = () => {
         <p>{copy.register_page_subtitle}</p>
       </div>
       <div className="auth-panel register-panel reveal">
-        <div className="register-form">
-          <div className="register-header">
-            <p className="register-kicker">{copy.register_kicker}</p>
-            <h4>{copy.register_heading}</h4>
-            <p>{copy.register_body}</p>
+        {isRegisterSuccess ? (
+          <div className="register-form register-success">
+            <div className="register-header">
+              <p className="register-kicker">{copy.register_kicker}</p>
+              <h4>{copy.register_heading}</h4>
+              <p>{copy.register_status_success}</p>
+            </div>
+            <span className="auth-status">{authStatus}</span>
           </div>
-          <form className="register-grid" onSubmit={handleRegisterSubmit}>
-            <label className="register-field">
-              {copy.label_display_name}
-              <input
-                className="register-input"
-                type="text"
-                placeholder={copy.placeholder_display_name}
-                value={registerForm.displayName}
-                onChange={(event) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    displayName: event.target.value,
-                  }))
-                }
-                required
-              />
-            </label>
-            <label className="register-field">
-              {copy.label_email}
-              <input
-                className="register-input"
-                type="email"
-                placeholder={copy.placeholder_email}
-                value={registerForm.email}
-                onChange={(event) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    email: event.target.value,
-                  }))
-                }
-                required
-              />
-            </label>
-            <label className="register-field">
-              {copy.label_password}
-              <input
-                className="register-input"
-                type="password"
-                placeholder={copy.placeholder_password}
-                value={registerForm.password}
-                onChange={(event) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    password: event.target.value,
-                  }))
-                }
-                required
-                minLength={8}
-              />
-            </label>
-            <label className="register-field">
-              {copy.label_confirm_password}
-              <input
-                className="register-input"
-                type="password"
-                placeholder={copy.placeholder_confirm_password}
-                value={registerForm.confirmPassword}
-                onChange={(event) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    confirmPassword: event.target.value,
-                  }))
-                }
-                required
-                minLength={8}
-              />
-            </label>
-            <label className="register-field">
-              {copy.label_birth_date}
-              <input
-                className="register-input"
-                type="date"
-                placeholder={copy.placeholder_birth_date}
-                value={registerForm.birthDate}
-                onChange={(event) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    birthDate: event.target.value,
-                  }))
-                }
-                required
-              />
-            </label>
-            <label className="register-field register-span">
-              {copy.label_location}
-              <input
-                className="register-input"
-                type="text"
-                placeholder={copy.placeholder_location}
-                value={registerForm.location}
-                onChange={(event) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    location: event.target.value,
-                  }))
-                }
-              />
-            </label>
-            <label className="register-field register-span">
-              {copy.label_interests}
-              <input
-                className="register-input"
-                type="text"
-                placeholder={copy.placeholder_interests}
-                value={registerForm.interests}
-                onChange={(event) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    interests: event.target.value,
-                  }))
-                }
-              />
-              <div className="register-tags">
-                <span>{copy.interest_tag_1}</span>
-                <span>{copy.interest_tag_2}</span>
-                <span>{copy.interest_tag_3}</span>
-                <span>{copy.interest_tag_4}</span>
+        ) : (
+          <div className="register-form">
+            <div className="register-header">
+              <p className="register-kicker">{copy.register_kicker}</p>
+              <h4>{copy.register_heading}</h4>
+              <p>{copy.register_body}</p>
+            </div>
+            <form className="register-grid" onSubmit={handleRegisterSubmit}>
+              <label className="register-field">
+                {copy.label_display_name}
+                <input
+                  className="register-input"
+                  type="text"
+                  placeholder={copy.placeholder_display_name}
+                  value={registerForm.displayName}
+                  onChange={(event) =>
+                    setRegisterForm((prev) => ({
+                      ...prev,
+                      displayName: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </label>
+              <label className="register-field">
+                {copy.label_email}
+                <input
+                  className="register-input"
+                  type="email"
+                  placeholder={copy.placeholder_email}
+                  value={registerForm.email}
+                  onChange={(event) =>
+                    setRegisterForm((prev) => ({
+                      ...prev,
+                      email: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </label>
+              <div className="register-google register-span">
+                <button
+                  className="ghost"
+                  type="button"
+                  onClick={handleGoogleRegisterClick}
+                  disabled={registerLoading}
+                >
+                  {copy.register_google_cta}
+                </button>
+                <p className="muted">{copy.register_google_hint}</p>
               </div>
-            </label>
-            <div className="register-consent register-span">
-              <label className="register-checkbox">
+              {!isGoogleRegister ? (
+                <>
+                  <label className="register-field">
+                    {copy.label_password}
+                    <input
+                      className="register-input"
+                      type="password"
+                      placeholder={copy.placeholder_password}
+                      value={registerForm.password}
+                      onChange={(event) =>
+                        setRegisterForm((prev) => ({
+                          ...prev,
+                          password: event.target.value,
+                        }))
+                      }
+                      required
+                      minLength={8}
+                    />
+                  </label>
+                  <label className="register-field">
+                    {copy.label_confirm_password}
+                    <input
+                      className="register-input"
+                      type="password"
+                      placeholder={copy.placeholder_confirm_password}
+                      value={registerForm.confirmPassword}
+                      onChange={(event) =>
+                        setRegisterForm((prev) => ({
+                          ...prev,
+                          confirmPassword: event.target.value,
+                        }))
+                      }
+                      required
+                      minLength={8}
+                    />
+                  </label>
+                </>
+              ) : null}
+              <label className="register-field">
+                {copy.label_birth_date}
                 <input
-                  type="checkbox"
-                  checked={registerForm.consentAge}
+                  className="register-input"
+                  type="date"
+                  placeholder={copy.placeholder_birth_date}
+                  value={registerForm.birthDate}
                   onChange={(event) =>
                     setRegisterForm((prev) => ({
                       ...prev,
-                      consentAge: event.target.checked,
+                      birthDate: event.target.value,
                     }))
                   }
                   required
                 />
-                {copy.consent_age}
               </label>
-              <label className="register-checkbox">
+              <label className="register-field register-span">
+                {copy.label_location}
                 <input
-                  type="checkbox"
-                  checked={registerForm.consentPrivacy}
+                  className="register-input"
+                  type="text"
+                  placeholder={copy.placeholder_location}
+                  value={registerForm.location}
                   onChange={(event) =>
                     setRegisterForm((prev) => ({
                       ...prev,
-                      consentPrivacy: event.target.checked,
+                      location: event.target.value,
                     }))
                   }
                 />
-                {copy.consent_privacy}
               </label>
-              <label className="register-checkbox">
+              <label className="register-field register-span">
+                {copy.label_interests}
                 <input
-                  type="checkbox"
-                  checked={registerForm.consentPolicy}
+                  className="register-input"
+                  type="text"
+                  placeholder={copy.placeholder_interests}
+                  value={registerForm.interests}
                   onChange={(event) =>
                     setRegisterForm((prev) => ({
                       ...prev,
-                      consentPolicy: event.target.checked,
+                      interests: event.target.value,
                     }))
                   }
-                  required
                 />
-                <span>
-                  {copy.consent_policy_prefix}
-                  <Link to={`/${lang}/guidelines`}>{copy.consent_policy_link}</Link>
-                  {copy.consent_policy_suffix}
-                </span>
+                <div className="register-tags">
+                  <span>{copy.interest_tag_1}</span>
+                  <span>{copy.interest_tag_2}</span>
+                  <span>{copy.interest_tag_3}</span>
+                  <span>{copy.interest_tag_4}</span>
+                </div>
               </label>
-            </div>
-            <div className="register-actions register-span">
-              <button className="cta" type="submit" disabled={!canSubmit}>
-                {registerLoading ? copy.register_creating : copy.register_create}
-              </button>
-              <button
-                className="ghost"
-                type="button"
-                onClick={handleAuthClick}
-                disabled={!firebaseConfigured}
-              >
-                {authUser ? copy.auth_sign_out : copy.auth_sign_in_google}
-              </button>
-              <span className="auth-status">{authStatus}</span>
-              {passwordMismatch ? (
-                <span className="register-status register-status--error">
-                  {copy.register_password_mismatch}
-                </span>
-              ) : null}
-              {underage ? (
-                <span className="register-status register-status--error">
-                  {copy.register_underage}
-                </span>
-              ) : null}
-              {registerStatus ? (
-                <span className="register-status">{registerStatus}</span>
-              ) : null}
-            </div>
-          </form>
-        </div>
+              <div className="register-consent register-span">
+                <label className="register-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={registerForm.consentAge}
+                    onChange={(event) =>
+                      setRegisterForm((prev) => ({
+                        ...prev,
+                        consentAge: event.target.checked,
+                      }))
+                    }
+                    required
+                  />
+                  {copy.consent_age}
+                </label>
+                <label className="register-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={registerForm.consentPrivacy}
+                    onChange={(event) =>
+                      setRegisterForm((prev) => ({
+                        ...prev,
+                        consentPrivacy: event.target.checked,
+                      }))
+                    }
+                  />
+                  {copy.consent_privacy}
+                </label>
+                <label className="register-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={registerForm.consentPolicy}
+                    onChange={(event) =>
+                      setRegisterForm((prev) => ({
+                        ...prev,
+                        consentPolicy: event.target.checked,
+                      }))
+                    }
+                    required
+                  />
+                  <span>
+                    {copy.consent_policy_prefix}
+                    <Link to={`/${lang}/guidelines`}>{copy.consent_policy_link}</Link>
+                    {copy.consent_policy_suffix}
+                  </span>
+                </label>
+              </div>
+              <div className="register-actions register-span">
+                <button className="cta" type="submit" disabled={!canSubmit}>
+                  {registerLoading ? copy.register_creating : copy.register_create}
+                </button>
+                {passwordMismatch ? (
+                  <span className="register-status register-status--error">
+                    {copy.register_password_mismatch}
+                  </span>
+                ) : null}
+                {underage ? (
+                  <span className="register-status register-status--error">
+                    {copy.register_underage}
+                  </span>
+                ) : null}
+                {registerStatus ? (
+                  <span className="register-status">{registerStatus}</span>
+                ) : null}
+              </div>
+            </form>
+          </div>
+        )}
         <aside className="register-aside">
           <div>
             <p className="step-label">{copy.register_expect_label}</p>
@@ -3020,6 +3171,9 @@ const ClubDetail = () => {
   const [reviewText, setReviewText] = useState('')
   const [reviewStatus, setReviewStatus] = useState('')
   const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewIdentity, setReviewIdentity] = useState<'profile' | 'anonymous'>(
+    'profile'
+  )
 
   const reviewSchema = useMemo(() => {
     if (!club || !clubReviews.length) {
@@ -3082,6 +3236,12 @@ const ClubDetail = () => {
 
   const canSubmitReview =
     firebaseConfigured && authUser && reviewText.trim().length > 10 && !reviewLoading
+  const reviewHeaderStatus =
+    reviewStatus || (!authUser ? copy.review_signin_required : copy.auth_sign_in_success)
+  const reviewHeaderIsError =
+    !authUser ||
+    reviewStatus === copy.review_status_error ||
+    reviewStatus === copy.review_permission_error
 
   const handleSubmitReview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -3090,6 +3250,7 @@ const ClubDetail = () => {
       club,
       rating: reviewRating,
       text: reviewText,
+      anonymous: reviewIdentity === 'anonymous',
     })
     setReviewStatus(result.message)
     if (result.ok) {
@@ -3223,6 +3384,29 @@ const ClubDetail = () => {
             </div>
           </div>
           <form className="review-form" onSubmit={handleSubmitReview}>
+            <div className="review-form-header">
+              <p
+                className={
+                  reviewHeaderIsError ? 'review-status review-status--error' : 'review-status'
+                }
+              >
+                {reviewHeaderStatus}
+              </p>
+              {authUser ? (
+                <label className="review-identity">
+                  <span>{copy.review_identity_label}</span>
+                  <select
+                    value={reviewIdentity}
+                    onChange={(event) =>
+                      setReviewIdentity(event.target.value as 'profile' | 'anonymous')
+                    }
+                  >
+                    <option value="profile">{copy.review_identity_profile}</option>
+                    <option value="anonymous">{copy.review_identity_anonymous}</option>
+                  </select>
+                </label>
+              ) : null}
+            </div>
             <label>
               {copy.review_rating_label}
               <select
@@ -3247,12 +3431,9 @@ const ClubDetail = () => {
             <button className="cta" type="submit" disabled={!canSubmitReview}>
               {reviewLoading ? copy.review_submitting : copy.review_submit}
             </button>
-            {!authUser ? (
-              <p className="review-status review-status--error">
-                {copy.review_signin_required}
-              </p>
+            {reviewStatus && reviewStatus !== copy.auth_sign_in_success ? (
+              <p className="review-status">{reviewStatus}</p>
             ) : null}
-            {reviewStatus ? <p className="review-status">{reviewStatus}</p> : null}
           </form>
         </div>
       </div>
@@ -3425,6 +3606,53 @@ function App() {
     await signInWithPopup(auth, provider)
   }
 
+  const handleGoogleRegisterStart = async () => {
+    if (!authRef.current) {
+      const message = languageCopy.auth_status_config
+      setRegisterStatus(message)
+      return { ok: false, message }
+    }
+    setRegisterStatus('')
+    try {
+      const { auth, provider } = authRef.current
+      let user = auth.currentUser
+      if (!user) {
+        const credential = await signInWithPopup(auth, provider)
+        user = credential.user
+      }
+      if (!user) {
+        const message = languageCopy.auth_sign_in_error
+        setRegisterStatus(message)
+        return { ok: false, message }
+      }
+      let birthDate = ''
+      if (firestoreRef.current) {
+        const userDoc = await getDoc(doc(firestoreRef.current, 'users', user.uid))
+        if (userDoc.exists()) {
+          const data = userDoc.data() as Record<string, unknown>
+          if (typeof data.birthDate === 'string') {
+            birthDate = data.birthDate
+          }
+        }
+      }
+      return {
+        ok: true,
+        user: {
+          displayName: user.displayName || '',
+          email: user.email || '',
+        },
+        birthDate,
+      }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.auth_sign_in_error
+      setRegisterStatus(message)
+      return { ok: false, message }
+    }
+  }
+
   const handleEmailSignIn = async ({
     email,
     password,
@@ -3518,14 +3746,83 @@ function App() {
     }
   }
 
+  const handleGoogleRegister = async ({
+    displayName,
+    email,
+    birthDate,
+    location,
+    interests,
+    consentAge,
+    consentPrivacy,
+    consentPolicy,
+  }: {
+    displayName: string
+    email: string
+    birthDate: string
+    location: string
+    interests: string[]
+    consentAge: boolean
+    consentPrivacy: boolean
+    consentPolicy: boolean
+  }) => {
+    if (!authRef.current || !firestoreRef.current) {
+      setRegisterStatus(languageCopy.auth_status_config)
+      return
+    }
+    const user = authRef.current.auth.currentUser
+    if (!user) {
+      setRegisterStatus(languageCopy.auth_sign_in_missing)
+      return
+    }
+    setRegisterLoading(true)
+    setRegisterStatus('')
+    try {
+      if (displayName && user.displayName !== displayName) {
+        await updateProfile(user, { displayName })
+      }
+      const userDocRef = doc(firestoreRef.current, 'users', user.uid)
+      const existingDoc = await getDoc(userDocRef)
+      const payload = {
+        displayName,
+        email: user.email || email,
+        birthDate,
+        location,
+        interests,
+        consentAge,
+        consentPrivacy,
+        consentPolicy,
+      }
+      const payloadWithStatus = existingDoc.exists()
+        ? payload
+        : { ...payload, status: 'pending', createdAt: serverTimestamp() }
+      await setDoc(userDocRef, payloadWithStatus, { merge: true })
+      setAuthStatus(languageCopy.register_status_success)
+      setRegisterStatus(languageCopy.register_status_success)
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.register_status_error
+      if (message.toLowerCase().includes('permission')) {
+        setRegisterStatus(languageCopy.register_status_permission)
+      } else {
+        setRegisterStatus(message)
+      }
+    } finally {
+      setRegisterLoading(false)
+    }
+  }
+
   const handleReviewSubmit = async ({
     club,
     rating,
     text,
+    anonymous = false,
   }: {
     club: Club
     rating: number
     text: string
+    anonymous?: boolean
   }) => {
     if (!authRef.current || !firestoreRef.current) {
       return { ok: false, message: languageCopy.auth_status_config }
@@ -3538,7 +3835,9 @@ function App() {
       return { ok: false, message: languageCopy.review_status_error }
     }
     try {
-      const authorLabel = user.displayName || user.email || 'member'
+      const authorLabel = anonymous
+        ? languageCopy.review_author_anonymous
+        : user.displayName || user.email || 'member'
       await addDoc(collection(firestoreRef.current, 'reviews'), {
         club_slug: club.slug,
         club_name: club.name,
@@ -3598,7 +3897,9 @@ function App() {
     authUser,
     handleAuthClick,
     handleEmailSignIn,
+    handleGoogleRegisterStart,
     handleRegister,
+    handleGoogleRegister,
     registerStatus,
     signInStatus,
     registerLoading,

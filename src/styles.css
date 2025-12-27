@@ -132,6 +132,74 @@ h1 {
   font-weight: 500;
 }
 
+.user-menu {
+  position: relative;
+}
+
+.user-menu summary {
+  list-style: none;
+}
+
+.user-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.user-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--ink);
+}
+
+.user-name {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.9rem;
+}
+
+.user-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+  box-shadow: 0 16px 24px var(--shadow);
+  z-index: 12;
+}
+
+.user-dropdown a,
+.user-dropdown button {
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  text-decoration: none;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.user-dropdown a:hover,
+.user-dropdown button:hover {
+  background: var(--surface-2);
+}
+
+.user-menu[open] .user-button {
+  background: var(--surface-2);
+}
+
 .lang-select {
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -481,6 +549,10 @@ main {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
+.register-success {
+  align-content: start;
+}
+
 .register-header h4 {
   font-size: 1.4rem;
   margin-top: 4px;
@@ -536,6 +608,23 @@ main {
   border-radius: 999px;
   font-size: 0.8rem;
   border: 1px solid var(--border);
+}
+
+.register-google {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px dashed var(--border);
+  background: var(--surface);
+}
+
+.register-google .ghost {
+  justify-self: start;
+}
+
+.register-google .muted {
+  font-size: 0.85rem;
 }
 
 .register-consent {
@@ -765,6 +854,25 @@ main {
   background: var(--surface);
   padding: 18px;
   border-radius: 18px;
+}
+
+.review-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.review-identity {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.review-identity select {
+  min-width: 180px;
 }
 
 .review-status {

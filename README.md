@@ -76,3 +76,9 @@ export default defineConfig([
 
 For a budget-friendly Google Cloud deploy via GitHub Actions, see
 `docs/gcp-deploy.md`.
+
+## Firestore
+
+If you enable Firebase Auth + Firestore, apply the rules in
+`docs/firestore-rules.md` to avoid permission errors during profile creation and
+review submission.
