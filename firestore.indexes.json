@@ -1,4 +1,21 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "relationship_links",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_a", "order": "ASCENDING" },
+        { "fieldPath": "user_b", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "event_rsvps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "event_slug", "order": "ASCENDING" },
+        { "fieldPath": "user_uid", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

@@ -19,12 +19,56 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    match /reviews/{reviewId} {
+    match /reviews_submitted/{reviewId} {
       allow read: if resource.data.status == 'approved' || isAdmin();
       allow create: if isSignedIn() &&
         request.resource.data.status == 'pending' &&
         request.resource.data.author_uid == request.auth.uid;
       allow update, delete: if isAdmin();
+    }
+
+    match /clubs_submitted/{clubId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.author_uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /relationship_links/{linkId} {
+      allow read: if isSignedIn() &&
+        (resource.data.user_a == request.auth.uid ||
+          resource.data.user_b == request.auth.uid);
+      allow create: if isSignedIn() &&
+        request.resource.data.user_a == request.auth.uid &&
+        request.resource.data.user_a != request.resource.data.user_b &&
+        request.resource.data.status == 'Pending';
+      allow update: if isSignedIn() &&
+        (resource.data.user_a == request.auth.uid ||
+          resource.data.user_b == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /event_rsvps/{rsvpId} {
+      allow read: if isSignedIn() &&
+        (resource.data.user_uid == request.auth.uid ||
+          request.auth.token.email == resource.data.host_email);
+      allow create: if isSignedIn() &&
+        request.resource.data.user_uid == request.auth.uid;
+      allow update: if isSignedIn() &&
+        (resource.data.user_uid == request.auth.uid ||
+          request.auth.token.email == resource.data.host_email);
+      allow delete: if isAdmin();
+    }
+
+    match /verification_requests/{requestId} {
+      allow read: if isSignedIn() &&
+        (resource.data.user_uid == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+        request.resource.data.user_uid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }

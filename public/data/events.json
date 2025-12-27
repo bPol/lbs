@@ -1,0 +1,45 @@
+[
+  {
+    "title": "Harborlight Salon",
+    "slug": "harborlight-salon",
+    "date": "2025-03-18",
+    "city": "Lisbon",
+    "privacy_tier": "Public",
+    "address": "Rua da Alfama 18, Lisbon",
+    "lat": 38.7127,
+    "lng": -9.1337,
+    "host_name": "Lena Ross",
+    "host_email": "host@ledbyswing.com",
+    "summary": "Open community night with soft music, light play spaces, and welcome hosts.",
+    "cap": { "men": 20, "women": 20, "couples": 10 }
+  },
+  {
+    "title": "Vetted Moon Room",
+    "slug": "vetted-moon-room",
+    "date": "2025-04-02",
+    "city": "Porto",
+    "privacy_tier": "Vetted",
+    "address": "Rua das Flores 90, Porto",
+    "lat": 41.1402,
+    "lng": -8.6158,
+    "host_name": "Jonah Park",
+    "host_email": "host@ledbyswing.com",
+    "summary": "Address released after host approval. Focused on newcomers and care.",
+    "cap": { "men": 14, "women": 16, "couples": 8 }
+  },
+  {
+    "title": "Private Atlas Gathering",
+    "slug": "private-atlas-gathering",
+    "date": "2025-04-20",
+    "city": "Sintra",
+    "privacy_tier": "Private",
+    "address": "Casa do Bosque, Sintra",
+    "lat": 38.7967,
+    "lng": -9.3904,
+    "host_name": "Sloan Ivy",
+    "host_email": "host@ledbyswing.com",
+    "summary": "Invite-only circle for established connections.",
+    "cap": { "men": 6, "women": 6, "couples": 4 },
+    "invited_emails": ["demo@ledbyswing.com"]
+  }
+]

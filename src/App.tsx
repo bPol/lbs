@@ -10,7 +10,7 @@ import {
   useOutletContext,
   useParams,
 } from 'react-router-dom'
-import { initializeApp } from 'firebase/app'
+import { initializeApp, type FirebaseApp } from 'firebase/app'
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
@@ -28,6 +28,7 @@ import {
   setDoc,
   doc,
   getDoc,
+  getDocs,
   addDoc,
   collection,
   onSnapshot,
@@ -35,6 +36,13 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore'
+import {
+  deleteToken,
+  getMessaging,
+  getToken,
+  onMessage,
+} from 'firebase/messaging'
+import { io, type Socket } from 'socket.io-client'
 import L from 'leaflet'
 
 const firebaseConfig = {
@@ -81,6 +89,83 @@ type Constellation = {
   name: string
   slug: string
   city?: string
+  members?: string[]
+  links?: RelationshipLink[]
+}
+
+type RelationshipLink = {
+  id?: string
+  user_a: string
+  user_b: string
+  link_type: 'Primary' | 'Play Partner' | 'Polycule Member'
+  status: 'Pending' | 'Confirmed' | 'Rejected'
+  merge_visibility?: boolean
+  user_a_name?: string
+  user_b_name?: string
+  user_a_email?: string
+  user_b_email?: string
+}
+
+type Profile = {
+  slug: string
+  display_name: string
+  location?: string
+  lat?: number
+  lng?: number
+  summary?: string
+  interests?: string[]
+  badges?: string[]
+  photo_url?: string
+}
+
+type EventPrivacyTier = 'Public' | 'Vetted' | 'Private'
+
+type EventCap = {
+  men: number
+  women: number
+  couples: number
+}
+
+type Event = {
+  title: string
+  slug: string
+  date: string
+  city: string
+  privacy_tier: EventPrivacyTier
+  address?: string
+  lat?: number
+  lng?: number
+  host_name: string
+  host_email: string
+  cap: EventCap
+  summary: string
+  invited_emails?: string[]
+}
+
+type EventRsvp = {
+  id?: string
+  event_slug: string
+  user_uid: string
+  user_name: string
+  user_email: string
+  category: keyof EventCap
+  status: 'Pending' | 'Approved' | 'Declined'
+  trust_badges?: string[]
+  checkin_token?: string
+  created_at?: string
+}
+
+type LiveStatusKey = 'open' | 'full' | 'last_call'
+
+type VerificationRequest = {
+  id?: string
+  user_uid: string
+  user_name: string
+  user_email: string
+  photo_url: string
+  phrase: string
+  status: 'pending' | 'approved' | 'rejected'
+  created_at?: string
 }
 
 type Review = {
@@ -109,6 +194,11 @@ type AppContext = {
   posts: Post[]
   reviews: Review[]
   constellations: Constellation[]
+  profiles: Profile[]
+  events: Event[]
+  relationshipLinks: RelationshipLink[]
+  pendingLinkRequests: RelationshipLink[]
+  verificationRequests: VerificationRequest[]
   clubNames: Record<string, string>
   authStatus: string
   authUser: string | null
@@ -171,17 +261,51 @@ type AppContext = {
       displayName?: string
       birthDate?: string
       location?: string
+      locationLat?: string
+      locationLng?: string
       interests?: string[]
       consentPrivacy?: boolean
+      photoUrl?: string
     }
   }>
   handleProfileUpdate: (details: {
     displayName: string
     birthDate: string
     location: string
+    locationLat: string
+    locationLng: string
     interests: string[]
     consentPrivacy: boolean
   }) => Promise<{ ok: boolean; message: string }>
+  handleLinkRequest: (details: {
+    email: string
+    linkType: RelationshipLink['link_type']
+  }) => Promise<{ ok: boolean; message: string }>
+  handleLinkResponse: (
+    linkId: string,
+    status: 'Confirmed' | 'Rejected'
+  ) => Promise<void>
+  handleLinkVisibility: (linkId: string, mergeVisibility: boolean) => Promise<void>
+  subscribeEventRsvps: (
+    eventSlug: string,
+    onUpdate: (rsvps: EventRsvp[]) => void
+  ) => (() => void) | null
+  handleEventRsvpSubmit: (
+    event: Event,
+    category: keyof EventCap
+  ) => Promise<{ ok: boolean; message: string }>
+  handleEventRsvpUpdate: (
+    rsvpId: string,
+    status: 'Approved' | 'Declined'
+  ) => Promise<void>
+  handlePhotoUpload: (file: File) => Promise<{ ok: boolean; url?: string; message: string }>
+  handleNotificationsEnable: () => Promise<{ ok: boolean; message: string; token?: string }>
+  handleNotificationsDisable: () => Promise<{ ok: boolean; message: string }>
+  handleVerificationSubmit: (file: File) => Promise<{ ok: boolean; message: string }>
+  handleVerificationModeration: (
+    requestId: string,
+    status: 'approved' | 'rejected'
+  ) => Promise<void>
 }
 
 const loadJson = async <T,>(path: string): Promise<T | null> => {
@@ -252,6 +376,7 @@ const copy = {
     nav_users: 'Users',
     nav_constellations: 'Constellations',
     nav_clubs: 'Clubs',
+    nav_events: 'Events',
     nav_map: 'Map',
     nav_websites: 'Websites',
     nav_blog: 'Blog',
@@ -260,6 +385,7 @@ const copy = {
     nav_admin: 'Admin',
     user_menu_label: 'Account',
     user_menu_edit: 'Edit profile',
+    user_menu_host: 'Host dashboard',
     user_menu_signout: 'Sign out',
     profile_page_title: 'Your profile',
     profile_page_subtitle: 'Update your details and privacy settings.',
@@ -269,6 +395,108 @@ const copy = {
     profile_save_error: 'Unable to update profile. Please try again.',
     profile_signin_prompt: 'Sign in to edit your profile.',
     request_access: 'Request Access',
+    link_section_title: 'Constellation links',
+    link_section_subtitle:
+      'Send requests, confirm consent, and choose how you appear together.',
+    link_request_email_label: 'Request by email',
+    link_request_email_placeholder: 'partner@email.com',
+    link_request_type_label: 'Link type',
+    link_request_send: 'Send request',
+    link_request_sending: 'Sending...',
+    link_request_status_sent: 'Link request sent.',
+    link_request_status_missing: 'Enter an email to send a request.',
+    link_request_status_self: 'You cannot link to your own email.',
+    link_request_status_not_found: 'No user found with that email.',
+    link_request_status_exists: 'A link request already exists.',
+    link_request_status_error: 'Unable to send request. Please try again.',
+    link_requests_incoming_title: 'Incoming requests',
+    link_requests_outgoing_title: 'Outgoing requests',
+    link_requests_confirmed_title: 'Confirmed links',
+    link_requests_empty: 'None yet.',
+    link_request_accept: 'Accept',
+    link_request_decline: 'Decline',
+    link_request_merge_label: 'Merge search visibility',
+    link_request_merge_on: 'Merged',
+    link_request_merge_off: 'Independent',
+    photo_upload_label: 'Profile photo',
+    photo_upload_button: 'Upload',
+    photo_upload_success: 'Photo updated.',
+    photo_upload_error: 'Unable to upload photo.',
+    notifications_title: 'Notifications',
+    notifications_desc: 'Enable push notifications for invites and updates.',
+    notifications_enable: 'Enable notifications',
+    notifications_disable: 'Disable notifications',
+    notifications_enabled: 'Notifications enabled.',
+    notifications_disabled: 'Notifications disabled.',
+    notifications_blocked: 'Notifications are blocked in your browser settings.',
+    notifications_missing_key: 'Missing VAPID key for notifications.',
+    notifications_error: 'Unable to update notifications.',
+    verification_title: 'Photo verification',
+    verification_desc: 'Upload a selfie holding the verification phrase.',
+    verification_phrase_label: 'Verification phrase',
+    verification_phrase: 'LBS2025',
+    verification_upload_label: 'Verification photo',
+    verification_submit: 'Submit verification',
+    verification_submitting: 'Submitting...',
+    verification_status_pending: 'Verification submitted for review.',
+    verification_status_success: 'Verification updated.',
+    verification_status_error: 'Unable to submit verification.',
+    verification_admin_title: 'Photo verification',
+    verification_admin_desc: 'Review submitted selfie verifications.',
+    verification_admin_empty: 'No verification requests.',
+    verification_admin_approve: 'Approve',
+    verification_admin_reject: 'Reject',
+    events_page_title: 'Parties & Events',
+    events_page_desc: 'See upcoming events, RSVP caps, and host vetting status.',
+    event_privacy_label: 'Privacy tier',
+    event_privacy_public: 'Public',
+    event_privacy_vetted: 'Vetted',
+    event_privacy_private: 'Private',
+    event_privacy_notice_public: 'Visible to all. Address is shared.',
+    event_privacy_notice_vetted:
+      'Visible to all. Address shared after host approval.',
+    event_privacy_notice_private: 'Invite-only. Hidden from public listings.',
+    event_address_label: 'Location',
+    event_address_hidden: 'Address hidden until approval.',
+    event_cap_label: 'Guest cap',
+    event_cap_men: 'Men',
+    event_cap_women: 'Women',
+    event_cap_couples: 'Couples',
+    event_rsvp_title: 'RSVP',
+    event_rsvp_desc: 'Pick a category to request a spot.',
+    event_rsvp_category_label: 'Category',
+    event_rsvp_submit: 'Send RSVP',
+    event_rsvp_sending: 'Sending...',
+    event_rsvp_full: 'This category is full.',
+    event_rsvp_pending: 'RSVP pending host approval.',
+    event_rsvp_approved: 'RSVP approved.',
+    event_rsvp_declined: 'RSVP declined.',
+    event_rsvp_error: 'Unable to send RSVP.',
+    event_rsvp_signed_out: 'Sign in to RSVP.',
+    event_rsvp_qr_title: 'Check-in QR',
+    event_rsvp_qr_desc: 'Show this code at the door for entry.',
+    event_guest_manager_title: 'Guest Manager',
+    event_guest_manager_desc: 'Review RSVPs and trust badges.',
+    event_guest_manager_pending: 'Pending requests',
+    event_guest_manager_approved: 'Approved guests',
+    event_guest_manager_empty: 'No RSVPs yet.',
+    event_guest_action_approve: 'Approve',
+    event_guest_action_decline: 'Decline',
+    event_not_found_title: 'Event not found',
+    event_not_found_body: 'We could not find this event.',
+    event_back: 'Back to events',
+    event_live_status_label: 'Live status',
+    event_live_status_open: 'Open',
+    event_live_status_full: 'Full',
+    event_live_status_last_call: 'Last call',
+    event_live_update: 'Update status',
+    event_live_chat_title: 'Live chat',
+    event_live_chat_placeholder: 'Type a message...',
+    event_live_chat_send: 'Send',
+    host_dashboard_title: 'Host dashboard',
+    host_dashboard_desc: 'Track RSVPs across your hosted events.',
+    host_dashboard_empty: 'No hosted events yet.',
+    host_dashboard_signin: 'Sign in to view host tools.',
     footer_tagline: 'Community home for users, constellations, clubs, and stories.',
     footer_guidelines: 'Guidelines & Terms',
     lang_select_label: 'Select language',
@@ -301,6 +529,8 @@ const copy = {
     label_confirm_password: 'Confirm password',
     label_birth_date: 'Birth date',
     label_location: 'Location',
+    label_location_lat: 'Location latitude',
+    label_location_lng: 'Location longitude',
     label_interests: 'Interests',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
@@ -308,6 +538,8 @@ const copy = {
     placeholder_confirm_password: 'Re-enter password',
     placeholder_birth_date: 'YYYY-MM-DD',
     placeholder_location: 'City, Country',
+    placeholder_location_lat: '41.38',
+    placeholder_location_lng: '2.17',
     placeholder_interests: 'Open relationships, Voyeur, BDSM',
     interest_tag_1: 'Open relationships',
     interest_tag_2: 'Voyeur',
@@ -559,6 +791,7 @@ const copy = {
     nav_users: 'Użytkownicy',
     nav_constellations: 'Konstelacje',
     nav_clubs: 'Kluby',
+    nav_events: 'Wydarzenia',
     nav_map: 'Mapa',
     nav_websites: 'Strony',
     nav_blog: 'Blog',
@@ -567,6 +800,7 @@ const copy = {
     nav_admin: 'Admin',
     user_menu_label: 'Konto',
     user_menu_edit: 'Edytuj profil',
+    user_menu_host: 'Panel gospodarza',
     user_menu_signout: 'Wyloguj się',
     profile_page_title: 'Twój profil',
     profile_page_subtitle: 'Zaktualizuj dane i ustawienia prywatności.',
@@ -576,6 +810,107 @@ const copy = {
     profile_save_error: 'Nie udało się zaktualizować profilu.',
     profile_signin_prompt: 'Zaloguj się, aby edytować profil.',
     request_access: 'Poproś o dostęp',
+    link_section_title: 'Połączenia konstelacji',
+    link_section_subtitle:
+      'Wysyłaj prośby, potwierdzaj zgodę i wybieraj widoczność.',
+    link_request_email_label: 'Prośba e-mail',
+    link_request_email_placeholder: 'partner@email.com',
+    link_request_type_label: 'Typ relacji',
+    link_request_send: 'Wyślij prośbę',
+    link_request_sending: 'Wysyłanie...',
+    link_request_status_sent: 'Prośba wysłana.',
+    link_request_status_missing: 'Podaj e-mail, aby wysłać prośbę.',
+    link_request_status_self: 'Nie możesz połączyć się z własnym e-mailem.',
+    link_request_status_not_found: 'Nie znaleziono użytkownika.',
+    link_request_status_exists: 'Prośba już istnieje.',
+    link_request_status_error: 'Nie udało się wysłać prośby.',
+    link_requests_incoming_title: 'Przychodzące prośby',
+    link_requests_outgoing_title: 'Wysłane prośby',
+    link_requests_confirmed_title: 'Potwierdzone połączenia',
+    link_requests_empty: 'Brak.',
+    link_request_accept: 'Akceptuj',
+    link_request_decline: 'Odrzuć',
+    link_request_merge_label: 'Połącz widoczność w wyszukiwaniu',
+    link_request_merge_on: 'Połączone',
+    link_request_merge_off: 'Niezależne',
+    photo_upload_label: 'Zdjęcie profilu',
+    photo_upload_button: 'Wyślij',
+    photo_upload_success: 'Zdjęcie zaktualizowane.',
+    photo_upload_error: 'Nie udało się wysłać zdjęcia.',
+    notifications_title: 'Powiadomienia',
+    notifications_desc: 'Wlacz powiadomienia o zaproszeniach i zmianach.',
+    notifications_enable: 'Wlacz powiadomienia',
+    notifications_disable: 'Wylacz powiadomienia',
+    notifications_enabled: 'Powiadomienia wlaczone.',
+    notifications_disabled: 'Powiadomienia wylaczone.',
+    notifications_blocked: 'Powiadomienia sa zablokowane w przegladarce.',
+    notifications_missing_key: 'Brak klucza VAPID dla powiadomien.',
+    notifications_error: 'Nie udalo sie zaktualizowac powiadomien.',
+    verification_title: 'Weryfikacja foto',
+    verification_desc: 'Wyslij selfie z haslem weryfikacyjnym.',
+    verification_phrase_label: 'Haslo weryfikacyjne',
+    verification_phrase: 'LBS2025',
+    verification_upload_label: 'Zdjecie weryfikacyjne',
+    verification_submit: 'Wyslij weryfikacje',
+    verification_submitting: 'Wysylanie...',
+    verification_status_pending: 'Weryfikacja wyslana do sprawdzenia.',
+    verification_status_success: 'Weryfikacja zaktualizowana.',
+    verification_status_error: 'Nie udalo sie wyslac weryfikacji.',
+    verification_admin_title: 'Weryfikacje foto',
+    verification_admin_desc: 'Sprawdz selfie weryfikacyjne.',
+    verification_admin_empty: 'Brak wnioskow.',
+    verification_admin_approve: 'Akceptuj',
+    verification_admin_reject: 'Odrzuc',
+    events_page_title: 'Imprezy i wydarzenia',
+    events_page_desc: 'Zobacz nadchodzące wydarzenia, limity i status weryfikacji.',
+    event_privacy_label: 'Prywatność',
+    event_privacy_public: 'Publiczne',
+    event_privacy_vetted: 'Weryfikowane',
+    event_privacy_private: 'Prywatne',
+    event_privacy_notice_public: 'Widoczne dla wszystkich. Adres dostępny.',
+    event_privacy_notice_vetted: 'Widoczne dla wszystkich. Adres po akceptacji.',
+    event_privacy_notice_private: 'Tylko zaproszeni. Ukryte na liście.',
+    event_address_label: 'Lokalizacja',
+    event_address_hidden: 'Adres ukryty do akceptacji.',
+    event_cap_label: 'Limit gości',
+    event_cap_men: 'Mężczyźni',
+    event_cap_women: 'Kobiety',
+    event_cap_couples: 'Pary',
+    event_rsvp_title: 'RSVP',
+    event_rsvp_desc: 'Wybierz kategorię, aby poprosić o miejsce.',
+    event_rsvp_category_label: 'Kategoria',
+    event_rsvp_submit: 'Wyślij RSVP',
+    event_rsvp_sending: 'Wysyłanie...',
+    event_rsvp_full: 'Brak miejsc w tej kategorii.',
+    event_rsvp_pending: 'RSVP oczekuje na akceptację.',
+    event_rsvp_approved: 'RSVP zaakceptowane.',
+    event_rsvp_declined: 'RSVP odrzucone.',
+    event_rsvp_error: 'Nie udało się wysłać RSVP.',
+    event_rsvp_signed_out: 'Zaloguj się, aby wysłać RSVP.',
+    event_rsvp_qr_title: 'Kod wejścia',
+    event_rsvp_qr_desc: 'Pokaż kod przy wejściu.',
+    event_guest_manager_title: 'Panel gości',
+    event_guest_manager_desc: 'Weryfikuj RSVP i odznaki zaufania.',
+    event_guest_manager_pending: 'Oczekujące prośby',
+    event_guest_manager_approved: 'Zaakceptowani goście',
+    event_guest_manager_empty: 'Brak RSVP.',
+    event_guest_action_approve: 'Akceptuj',
+    event_guest_action_decline: 'Odrzuć',
+    event_not_found_title: 'Nie znaleziono wydarzenia',
+    event_not_found_body: 'Nie znaleźliśmy tego wydarzenia.',
+    event_back: 'Wróć do wydarzeń',
+    event_live_status_label: 'Status na żywo',
+    event_live_status_open: 'Otwarta',
+    event_live_status_full: 'Pelna',
+    event_live_status_last_call: 'Ostatnie wejscie',
+    event_live_update: 'Zmien status',
+    event_live_chat_title: 'Czat na żywo',
+    event_live_chat_placeholder: 'Napisz wiadomość...',
+    event_live_chat_send: 'Wyślij',
+    host_dashboard_title: 'Panel gospodarza',
+    host_dashboard_desc: 'Przegląd RSVP dla Twoich wydarzeń.',
+    host_dashboard_empty: 'Brak wydarzeń gospodarza.',
+    host_dashboard_signin: 'Zaloguj się, aby zobaczyć narzędzia hosta.',
     footer_tagline: 'Dom społeczności dla użytkowników, konstelacji, klubów i historii.',
     footer_guidelines: 'Wytyczne i regulamin',
     lang_select_label: 'Wybierz język',
@@ -608,6 +943,8 @@ const copy = {
     label_confirm_password: 'Potwierdź hasło',
     label_birth_date: 'Data urodzenia',
     label_location: 'Lokalizacja',
+    label_location_lat: 'Szerokosc geograficzna',
+    label_location_lng: 'Dlugosc geograficzna',
     label_interests: 'Zainteresowania',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
@@ -615,6 +952,8 @@ const copy = {
     placeholder_confirm_password: 'Wpisz ponownie hasło',
     placeholder_birth_date: 'RRRR-MM-DD',
     placeholder_location: 'Miasto, kraj',
+    placeholder_location_lat: '51.10',
+    placeholder_location_lng: '17.03',
     placeholder_interests: 'Relacje otwarte, Voyeur, BDSM',
     interest_tag_1: 'Relacje otwarte',
     interest_tag_2: 'Voyeur',
@@ -864,6 +1203,7 @@ const copy = {
     nav_users: 'Utilisateurs',
     nav_constellations: 'Constellations',
     nav_clubs: 'Clubs',
+    nav_events: 'Événements',
     nav_map: 'Carte',
     nav_websites: 'Sites',
     nav_blog: 'Blog',
@@ -872,6 +1212,7 @@ const copy = {
     nav_admin: 'Admin',
     user_menu_label: 'Compte',
     user_menu_edit: 'Modifier le profil',
+    user_menu_host: 'Tableau hôte',
     user_menu_signout: 'Se déconnecter',
     profile_page_title: 'Votre profil',
     profile_page_subtitle: 'Mettez à jour vos informations et votre confidentialité.',
@@ -881,6 +1222,108 @@ const copy = {
     profile_save_error: "Impossible de mettre à jour le profil.",
     profile_signin_prompt: 'Connectez-vous pour modifier votre profil.',
     request_access: "Demander l'accès",
+    link_section_title: 'Liens de constellation',
+    link_section_subtitle:
+      'Envoyez des demandes, confirmez le consentement et choisissez la visibilité.',
+    link_request_email_label: 'Demande par e-mail',
+    link_request_email_placeholder: 'partner@email.com',
+    link_request_type_label: 'Type de lien',
+    link_request_send: 'Envoyer la demande',
+    link_request_sending: 'Envoi...',
+    link_request_status_sent: 'Demande envoyée.',
+    link_request_status_missing: 'Saisissez un e-mail pour envoyer une demande.',
+    link_request_status_self: 'Impossible de vous lier à votre propre e-mail.',
+    link_request_status_not_found: 'Aucun utilisateur trouvé.',
+    link_request_status_exists: 'Une demande existe déjà.',
+    link_request_status_error: "Impossible d'envoyer la demande.",
+    link_requests_incoming_title: 'Demandes entrantes',
+    link_requests_outgoing_title: 'Demandes sortantes',
+    link_requests_confirmed_title: 'Liens confirmés',
+    link_requests_empty: 'Aucun.',
+    link_request_accept: 'Accepter',
+    link_request_decline: 'Refuser',
+    link_request_merge_label: 'Fusionner la visibilité',
+    link_request_merge_on: 'Fusionné',
+    link_request_merge_off: 'Indépendant',
+    photo_upload_label: 'Photo de profil',
+    photo_upload_button: 'Envoyer',
+    photo_upload_success: 'Photo mise à jour.',
+    photo_upload_error: 'Impossible d’envoyer la photo.',
+    notifications_title: 'Notifications',
+    notifications_desc: 'Activez les notifications pour les invitations.',
+    notifications_enable: 'Activer les notifications',
+    notifications_disable: 'Desactiver les notifications',
+    notifications_enabled: 'Notifications activees.',
+    notifications_disabled: 'Notifications desactivees.',
+    notifications_blocked: 'Notifications bloquees dans le navigateur.',
+    notifications_missing_key: 'Cle VAPID manquante.',
+    notifications_error: 'Impossible de mettre a jour les notifications.',
+    verification_title: 'Verification photo',
+    verification_desc: 'Envoyez un selfie avec la phrase de verification.',
+    verification_phrase_label: 'Phrase de verification',
+    verification_phrase: 'LBS2025',
+    verification_upload_label: 'Photo de verification',
+    verification_submit: 'Envoyer la verification',
+    verification_submitting: 'Envoi...',
+    verification_status_pending: 'Verification envoyee pour examen.',
+    verification_status_success: 'Verification mise a jour.',
+    verification_status_error: 'Impossible d’envoyer la verification.',
+    verification_admin_title: 'Verification photo',
+    verification_admin_desc: 'Examinez les selfies de verification.',
+    verification_admin_empty: 'Aucune demande.',
+    verification_admin_approve: 'Approuver',
+    verification_admin_reject: 'Rejeter',
+    events_page_title: 'Soirées & événements',
+    events_page_desc: 'Événements à venir, quotas et validation des hôtes.',
+    event_privacy_label: 'Niveau de confidentialité',
+    event_privacy_public: 'Public',
+    event_privacy_vetted: 'Vérifié',
+    event_privacy_private: 'Privé',
+    event_privacy_notice_public: 'Visible pour tous. Adresse partagée.',
+    event_privacy_notice_vetted:
+      'Visible pour tous. Adresse après validation.',
+    event_privacy_notice_private: 'Sur invitation. Masqué publiquement.',
+    event_address_label: 'Lieu',
+    event_address_hidden: 'Adresse masquée jusqu’à validation.',
+    event_cap_label: 'Capacité',
+    event_cap_men: 'Hommes',
+    event_cap_women: 'Femmes',
+    event_cap_couples: 'Couples',
+    event_rsvp_title: 'RSVP',
+    event_rsvp_desc: 'Choisissez une catégorie pour demander une place.',
+    event_rsvp_category_label: 'Catégorie',
+    event_rsvp_submit: 'Envoyer RSVP',
+    event_rsvp_sending: 'Envoi...',
+    event_rsvp_full: 'Catégorie complète.',
+    event_rsvp_pending: 'RSVP en attente.',
+    event_rsvp_approved: 'RSVP accepté.',
+    event_rsvp_declined: 'RSVP refusé.',
+    event_rsvp_error: 'Impossible d’envoyer RSVP.',
+    event_rsvp_signed_out: 'Connectez-vous pour RSVP.',
+    event_rsvp_qr_title: 'QR d’entrée',
+    event_rsvp_qr_desc: 'Présentez ce code à l’entrée.',
+    event_guest_manager_title: 'Gestion des invités',
+    event_guest_manager_desc: 'Examinez les RSVPs et badges.',
+    event_guest_manager_pending: 'Demandes en attente',
+    event_guest_manager_approved: 'Invités approuvés',
+    event_guest_manager_empty: 'Aucun RSVP.',
+    event_guest_action_approve: 'Approuver',
+    event_guest_action_decline: 'Refuser',
+    event_not_found_title: 'Événement introuvable',
+    event_not_found_body: 'Impossible de trouver cet événement.',
+    event_back: 'Retour aux événements',
+    event_live_status_label: 'Statut en direct',
+    event_live_status_open: 'Ouvert',
+    event_live_status_full: 'Complet',
+    event_live_status_last_call: 'Dernier appel',
+    event_live_update: 'Mettre à jour',
+    event_live_chat_title: 'Chat en direct',
+    event_live_chat_placeholder: 'Ecrivez un message...',
+    event_live_chat_send: 'Envoyer',
+    host_dashboard_title: 'Tableau hôte',
+    host_dashboard_desc: 'Suivez les RSVPs de vos événements.',
+    host_dashboard_empty: 'Aucun événement en tant qu’hôte.',
+    host_dashboard_signin: 'Connectez-vous pour les outils hôte.',
     footer_tagline: 'Maison de la communauté pour utilisateurs, constellations, clubs et histoires.',
     footer_guidelines: 'Consignes et conditions',
     lang_select_label: 'Choisir la langue',
@@ -913,6 +1356,8 @@ const copy = {
     label_confirm_password: 'Confirmer le mot de passe',
     label_birth_date: 'Date de naissance',
     label_location: 'Localisation',
+    label_location_lat: 'Latitude',
+    label_location_lng: 'Longitude',
     label_interests: 'Intérêts',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
@@ -920,6 +1365,8 @@ const copy = {
     placeholder_confirm_password: 'Ressaisir le mot de passe',
     placeholder_birth_date: 'AAAA-MM-JJ',
     placeholder_location: 'Ville, pays',
+    placeholder_location_lat: '48.85',
+    placeholder_location_lng: '2.35',
     placeholder_interests: 'Relations ouvertes, Voyeur, BDSM',
     interest_tag_1: 'Relations ouvertes',
     interest_tag_2: 'Voyeur',
@@ -1169,6 +1616,7 @@ const copy = {
     nav_users: 'Nutzer',
     nav_constellations: 'Konstellationen',
     nav_clubs: 'Clubs',
+    nav_events: 'Events',
     nav_map: 'Karte',
     nav_websites: 'Websites',
     nav_blog: 'Blog',
@@ -1177,6 +1625,7 @@ const copy = {
     nav_admin: 'Admin',
     user_menu_label: 'Konto',
     user_menu_edit: 'Profil bearbeiten',
+    user_menu_host: 'Host-Dashboard',
     user_menu_signout: 'Abmelden',
     profile_page_title: 'Dein Profil',
     profile_page_subtitle: 'Aktualisiere deine Angaben und Privatsphäre.',
@@ -1186,6 +1635,108 @@ const copy = {
     profile_save_error: 'Profil konnte nicht aktualisiert werden.',
     profile_signin_prompt: 'Melde dich an, um dein Profil zu bearbeiten.',
     request_access: 'Zugang anfordern',
+    link_section_title: 'Konstellations-Links',
+    link_section_subtitle:
+      'Anfragen senden, Zustimmung bestätigen und Sichtbarkeit wählen.',
+    link_request_email_label: 'Anfrage per E-Mail',
+    link_request_email_placeholder: 'partner@email.com',
+    link_request_type_label: 'Beziehungstyp',
+    link_request_send: 'Anfrage senden',
+    link_request_sending: 'Senden...',
+    link_request_status_sent: 'Anfrage gesendet.',
+    link_request_status_missing: 'E-Mail eingeben, um eine Anfrage zu senden.',
+    link_request_status_self: 'Du kannst dich nicht mit deiner eigenen E-Mail verknüpfen.',
+    link_request_status_not_found: 'Kein Nutzer gefunden.',
+    link_request_status_exists: 'Eine Anfrage existiert bereits.',
+    link_request_status_error: 'Anfrage konnte nicht gesendet werden.',
+    link_requests_incoming_title: 'Eingehende Anfragen',
+    link_requests_outgoing_title: 'Ausgehende Anfragen',
+    link_requests_confirmed_title: 'Bestätigte Links',
+    link_requests_empty: 'Keine.',
+    link_request_accept: 'Annehmen',
+    link_request_decline: 'Ablehnen',
+    link_request_merge_label: 'Sichtbarkeit zusammenlegen',
+    link_request_merge_on: 'Zusammengelegt',
+    link_request_merge_off: 'Unabhängig',
+    photo_upload_label: 'Profilfoto',
+    photo_upload_button: 'Hochladen',
+    photo_upload_success: 'Foto aktualisiert.',
+    photo_upload_error: 'Foto konnte nicht hochgeladen werden.',
+    notifications_title: 'Benachrichtigungen',
+    notifications_desc: 'Aktiviere Push-Benachrichtigungen fuer Einladungen.',
+    notifications_enable: 'Benachrichtigungen aktivieren',
+    notifications_disable: 'Benachrichtigungen deaktivieren',
+    notifications_enabled: 'Benachrichtigungen aktiviert.',
+    notifications_disabled: 'Benachrichtigungen deaktiviert.',
+    notifications_blocked: 'Benachrichtigungen im Browser blockiert.',
+    notifications_missing_key: 'VAPID-Schluessel fehlt.',
+    notifications_error: 'Benachrichtigungen konnten nicht aktualisiert werden.',
+    verification_title: 'Foto-Verifizierung',
+    verification_desc: 'Lade ein Selfie mit dem Verifizierungscode hoch.',
+    verification_phrase_label: 'Verifizierungscode',
+    verification_phrase: 'LBS2025',
+    verification_upload_label: 'Verifizierungsfoto',
+    verification_submit: 'Verifizierung senden',
+    verification_submitting: 'Senden...',
+    verification_status_pending: 'Verifizierung zur Prufung gesendet.',
+    verification_status_success: 'Verifizierung aktualisiert.',
+    verification_status_error: 'Verifizierung konnte nicht gesendet werden.',
+    verification_admin_title: 'Foto-Verifizierung',
+    verification_admin_desc: 'Prufe eingereichte Selfies.',
+    verification_admin_empty: 'Keine Anfragen.',
+    verification_admin_approve: 'Freigeben',
+    verification_admin_reject: 'Ablehnen',
+    events_page_title: 'Partys & Events',
+    events_page_desc: 'Kommende Events, Kontingente und Host-Freigaben.',
+    event_privacy_label: 'Privatsphäre',
+    event_privacy_public: 'Öffentlich',
+    event_privacy_vetted: 'Geprüft',
+    event_privacy_private: 'Privat',
+    event_privacy_notice_public: 'Für alle sichtbar. Adresse wird angezeigt.',
+    event_privacy_notice_vetted:
+      'Für alle sichtbar. Adresse nach Freigabe.',
+    event_privacy_notice_private: 'Nur auf Einladung. Nicht gelistet.',
+    event_address_label: 'Ort',
+    event_address_hidden: 'Adresse bis zur Freigabe verborgen.',
+    event_cap_label: 'Gästelimit',
+    event_cap_men: 'Männer',
+    event_cap_women: 'Frauen',
+    event_cap_couples: 'Paare',
+    event_rsvp_title: 'RSVP',
+    event_rsvp_desc: 'Kategorie wählen und Platz anfragen.',
+    event_rsvp_category_label: 'Kategorie',
+    event_rsvp_submit: 'RSVP senden',
+    event_rsvp_sending: 'Senden...',
+    event_rsvp_full: 'Kategorie ist voll.',
+    event_rsvp_pending: 'RSVP wartet auf Freigabe.',
+    event_rsvp_approved: 'RSVP bestätigt.',
+    event_rsvp_declined: 'RSVP abgelehnt.',
+    event_rsvp_error: 'RSVP konnte nicht gesendet werden.',
+    event_rsvp_signed_out: 'Zum RSVP anmelden.',
+    event_rsvp_qr_title: 'Check-in QR',
+    event_rsvp_qr_desc: 'Zeige den Code am Eingang.',
+    event_guest_manager_title: 'Guest Manager',
+    event_guest_manager_desc: 'RSVPs und Trust Badges prüfen.',
+    event_guest_manager_pending: 'Offene Anfragen',
+    event_guest_manager_approved: 'Bestätigte Gäste',
+    event_guest_manager_empty: 'Noch keine RSVPs.',
+    event_guest_action_approve: 'Freigeben',
+    event_guest_action_decline: 'Ablehnen',
+    event_not_found_title: 'Event nicht gefunden',
+    event_not_found_body: 'Dieses Event wurde nicht gefunden.',
+    event_back: 'Zurück zu Events',
+    event_live_status_label: 'Live-Status',
+    event_live_status_open: 'Offen',
+    event_live_status_full: 'Voll',
+    event_live_status_last_call: 'Letzter Aufruf',
+    event_live_update: 'Status aktualisieren',
+    event_live_chat_title: 'Live-Chat',
+    event_live_chat_placeholder: 'Nachricht eingeben...',
+    event_live_chat_send: 'Senden',
+    host_dashboard_title: 'Host-Dashboard',
+    host_dashboard_desc: 'RSVPs deiner Events im Blick.',
+    host_dashboard_empty: 'Noch keine Host-Events.',
+    host_dashboard_signin: 'Melde dich an, um Host-Tools zu sehen.',
     footer_tagline: 'Community-Zuhause für Nutzer, Konstellationen, Clubs und Stories.',
     footer_guidelines: 'Richtlinien & Bedingungen',
     lang_select_label: 'Sprache wählen',
@@ -1218,6 +1769,8 @@ const copy = {
     label_confirm_password: 'Passwort bestätigen',
     label_birth_date: 'Geburtsdatum',
     label_location: 'Ort',
+    label_location_lat: 'Breitengrad',
+    label_location_lng: 'Laengengrad',
     label_interests: 'Interessen',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
@@ -1225,6 +1778,8 @@ const copy = {
     placeholder_confirm_password: 'Passwort erneut',
     placeholder_birth_date: 'JJJJ-MM-TT',
     placeholder_location: 'Stadt, Land',
+    placeholder_location_lat: '52.52',
+    placeholder_location_lng: '13.40',
     placeholder_interests: 'Offene Beziehungen, Voyeur, BDSM',
     interest_tag_1: 'Offene Beziehungen',
     interest_tag_2: 'Voyeur',
@@ -1476,6 +2031,7 @@ const copy = {
     nav_users: 'Utenti',
     nav_constellations: 'Costellazioni',
     nav_clubs: 'Club',
+    nav_events: 'Eventi',
     nav_map: 'Mappa',
     nav_websites: 'Siti',
     nav_blog: 'Blog',
@@ -1484,6 +2040,7 @@ const copy = {
     nav_admin: 'Admin',
     user_menu_label: 'Account',
     user_menu_edit: 'Modifica profilo',
+    user_menu_host: 'Dashboard host',
     user_menu_signout: 'Esci',
     profile_page_title: 'Il tuo profilo',
     profile_page_subtitle: 'Aggiorna i dati e le impostazioni privacy.',
@@ -1493,6 +2050,107 @@ const copy = {
     profile_save_error: 'Impossibile aggiornare il profilo.',
     profile_signin_prompt: 'Accedi per modificare il profilo.',
     request_access: 'Richiedi accesso',
+    link_section_title: 'Legami della costellazione',
+    link_section_subtitle:
+      'Invia richieste, conferma il consenso e scegli la visibilità.',
+    link_request_email_label: 'Richiesta via email',
+    link_request_email_placeholder: 'partner@email.com',
+    link_request_type_label: 'Tipo di legame',
+    link_request_send: 'Invia richiesta',
+    link_request_sending: 'Invio...',
+    link_request_status_sent: 'Richiesta inviata.',
+    link_request_status_missing: 'Inserisci un email per inviare la richiesta.',
+    link_request_status_self: 'Non puoi collegarti alla tua email.',
+    link_request_status_not_found: 'Nessun utente trovato.',
+    link_request_status_exists: 'La richiesta esiste già.',
+    link_request_status_error: 'Impossibile inviare la richiesta.',
+    link_requests_incoming_title: 'Richieste in arrivo',
+    link_requests_outgoing_title: 'Richieste inviate',
+    link_requests_confirmed_title: 'Legami confermati',
+    link_requests_empty: 'Nessuna.',
+    link_request_accept: 'Accetta',
+    link_request_decline: 'Rifiuta',
+    link_request_merge_label: 'Unisci visibilità di ricerca',
+    link_request_merge_on: 'Uniti',
+    link_request_merge_off: 'Indipendenti',
+    photo_upload_label: 'Foto profilo',
+    photo_upload_button: 'Carica',
+    photo_upload_success: 'Foto aggiornata.',
+    photo_upload_error: 'Impossibile caricare la foto.',
+    notifications_title: 'Notifiche',
+    notifications_desc: 'Abilita le notifiche per inviti e aggiornamenti.',
+    notifications_enable: 'Abilita notifiche',
+    notifications_disable: 'Disabilita notifiche',
+    notifications_enabled: 'Notifiche abilitate.',
+    notifications_disabled: 'Notifiche disabilitate.',
+    notifications_blocked: 'Notifiche bloccate nel browser.',
+    notifications_missing_key: 'Chiave VAPID mancante.',
+    notifications_error: 'Impossibile aggiornare le notifiche.',
+    verification_title: 'Verifica foto',
+    verification_desc: 'Carica un selfie con la frase di verifica.',
+    verification_phrase_label: 'Frase di verifica',
+    verification_phrase: 'LBS2025',
+    verification_upload_label: 'Foto di verifica',
+    verification_submit: 'Invia verifica',
+    verification_submitting: 'Invio...',
+    verification_status_pending: 'Verifica inviata per revisione.',
+    verification_status_success: 'Verifica aggiornata.',
+    verification_status_error: 'Impossibile inviare la verifica.',
+    verification_admin_title: 'Verifica foto',
+    verification_admin_desc: 'Revisiona i selfie di verifica.',
+    verification_admin_empty: 'Nessuna richiesta.',
+    verification_admin_approve: 'Approva',
+    verification_admin_reject: 'Rifiuta',
+    events_page_title: 'Party & eventi',
+    events_page_desc: 'Eventi in arrivo, cap e stato di approvazione.',
+    event_privacy_label: 'Privacy',
+    event_privacy_public: 'Pubblico',
+    event_privacy_vetted: 'Vaglio',
+    event_privacy_private: 'Privato',
+    event_privacy_notice_public: 'Visibile a tutti. Indirizzo condiviso.',
+    event_privacy_notice_vetted: 'Visibile a tutti. Indirizzo dopo approvazione.',
+    event_privacy_notice_private: 'Solo su invito. Nascosto.',
+    event_address_label: 'Luogo',
+    event_address_hidden: 'Indirizzo nascosto fino all’approvazione.',
+    event_cap_label: 'Capienza',
+    event_cap_men: 'Uomini',
+    event_cap_women: 'Donne',
+    event_cap_couples: 'Coppie',
+    event_rsvp_title: 'RSVP',
+    event_rsvp_desc: 'Scegli una categoria per richiedere un posto.',
+    event_rsvp_category_label: 'Categoria',
+    event_rsvp_submit: 'Invia RSVP',
+    event_rsvp_sending: 'Invio...',
+    event_rsvp_full: 'Categoria piena.',
+    event_rsvp_pending: 'RSVP in attesa.',
+    event_rsvp_approved: 'RSVP approvato.',
+    event_rsvp_declined: 'RSVP rifiutato.',
+    event_rsvp_error: 'Impossibile inviare RSVP.',
+    event_rsvp_signed_out: 'Accedi per RSVP.',
+    event_rsvp_qr_title: 'QR di check-in',
+    event_rsvp_qr_desc: 'Mostra il codice all’ingresso.',
+    event_guest_manager_title: 'Guest Manager',
+    event_guest_manager_desc: 'Valuta gli RSVP e i badge.',
+    event_guest_manager_pending: 'Richieste in attesa',
+    event_guest_manager_approved: 'Ospiti approvati',
+    event_guest_manager_empty: 'Nessun RSVP.',
+    event_guest_action_approve: 'Approva',
+    event_guest_action_decline: 'Rifiuta',
+    event_not_found_title: 'Evento non trovato',
+    event_not_found_body: 'Impossibile trovare questo evento.',
+    event_back: 'Torna agli eventi',
+    event_live_status_label: 'Stato live',
+    event_live_status_open: 'Aperto',
+    event_live_status_full: 'Completo',
+    event_live_status_last_call: 'Ultima chiamata',
+    event_live_update: 'Aggiorna stato',
+    event_live_chat_title: 'Chat live',
+    event_live_chat_placeholder: 'Scrivi un messaggio...',
+    event_live_chat_send: 'Invia',
+    host_dashboard_title: 'Dashboard host',
+    host_dashboard_desc: 'Monitora gli RSVP dei tuoi eventi.',
+    host_dashboard_empty: 'Nessun evento ospitato.',
+    host_dashboard_signin: 'Accedi per vedere gli strumenti host.',
     footer_tagline: 'Casa della community per utenti, costellazioni, club e storie.',
     footer_guidelines: 'Linee guida e termini',
     lang_select_label: 'Seleziona lingua',
@@ -1525,6 +2183,8 @@ const copy = {
     label_confirm_password: 'Conferma password',
     label_birth_date: 'Data di nascita',
     label_location: 'Località',
+    label_location_lat: 'Latitudine',
+    label_location_lng: 'Longitudine',
     label_interests: 'Interessi',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
@@ -1532,6 +2192,8 @@ const copy = {
     placeholder_confirm_password: 'Reinserisci la password',
     placeholder_birth_date: 'AAAA-MM-GG',
     placeholder_location: 'Città, Paese',
+    placeholder_location_lat: '41.90',
+    placeholder_location_lng: '12.49',
     placeholder_interests: 'Relazioni aperte, Voyeur, BDSM',
     interest_tag_1: 'Relazioni aperte',
     interest_tag_2: 'Voyeur',
@@ -1782,6 +2444,7 @@ const copy = {
     nav_users: 'Usuarios',
     nav_constellations: 'Constelaciones',
     nav_clubs: 'Clubes',
+    nav_events: 'Eventos',
     nav_map: 'Mapa',
     nav_websites: 'Sitios',
     nav_blog: 'Blog',
@@ -1790,6 +2453,7 @@ const copy = {
     nav_admin: 'Admin',
     user_menu_label: 'Cuenta',
     user_menu_edit: 'Editar perfil',
+    user_menu_host: 'Panel de anfitrión',
     user_menu_signout: 'Cerrar sesión',
     profile_page_title: 'Tu perfil',
     profile_page_subtitle: 'Actualiza tus datos y la privacidad.',
@@ -1799,6 +2463,107 @@ const copy = {
     profile_save_error: 'No se pudo actualizar el perfil.',
     profile_signin_prompt: 'Inicia sesión para editar tu perfil.',
     request_access: 'Solicitar acceso',
+    link_section_title: 'Vínculos de constelación',
+    link_section_subtitle:
+      'Envía solicitudes, confirma consentimiento y elige visibilidad.',
+    link_request_email_label: 'Solicitud por email',
+    link_request_email_placeholder: 'partner@email.com',
+    link_request_type_label: 'Tipo de vínculo',
+    link_request_send: 'Enviar solicitud',
+    link_request_sending: 'Enviando...',
+    link_request_status_sent: 'Solicitud enviada.',
+    link_request_status_missing: 'Ingresa un email para enviar la solicitud.',
+    link_request_status_self: 'No puedes vincular tu propio email.',
+    link_request_status_not_found: 'No se encontró usuario.',
+    link_request_status_exists: 'La solicitud ya existe.',
+    link_request_status_error: 'No se pudo enviar la solicitud.',
+    link_requests_incoming_title: 'Solicitudes entrantes',
+    link_requests_outgoing_title: 'Solicitudes enviadas',
+    link_requests_confirmed_title: 'Vínculos confirmados',
+    link_requests_empty: 'Ninguno.',
+    link_request_accept: 'Aceptar',
+    link_request_decline: 'Rechazar',
+    link_request_merge_label: 'Unir visibilidad de búsqueda',
+    link_request_merge_on: 'Unidos',
+    link_request_merge_off: 'Independientes',
+    photo_upload_label: 'Foto de perfil',
+    photo_upload_button: 'Subir',
+    photo_upload_success: 'Foto actualizada.',
+    photo_upload_error: 'No se pudo subir la foto.',
+    notifications_title: 'Notificaciones',
+    notifications_desc: 'Activa notificaciones para invitaciones y cambios.',
+    notifications_enable: 'Activar notificaciones',
+    notifications_disable: 'Desactivar notificaciones',
+    notifications_enabled: 'Notificaciones activadas.',
+    notifications_disabled: 'Notificaciones desactivadas.',
+    notifications_blocked: 'Notificaciones bloqueadas en el navegador.',
+    notifications_missing_key: 'Falta la clave VAPID.',
+    notifications_error: 'No se pudieron actualizar las notificaciones.',
+    verification_title: 'Verificacion de foto',
+    verification_desc: 'Sube un selfie con la frase de verificacion.',
+    verification_phrase_label: 'Frase de verificacion',
+    verification_phrase: 'LBS2025',
+    verification_upload_label: 'Foto de verificacion',
+    verification_submit: 'Enviar verificacion',
+    verification_submitting: 'Enviando...',
+    verification_status_pending: 'Verificacion enviada para revision.',
+    verification_status_success: 'Verificacion actualizada.',
+    verification_status_error: 'No se pudo enviar la verificacion.',
+    verification_admin_title: 'Verificacion de foto',
+    verification_admin_desc: 'Revisa los selfies de verificacion.',
+    verification_admin_empty: 'Sin solicitudes.',
+    verification_admin_approve: 'Aprobar',
+    verification_admin_reject: 'Rechazar',
+    events_page_title: 'Fiestas y eventos',
+    events_page_desc: 'Eventos próximos, cupos y estado de aprobación.',
+    event_privacy_label: 'Privacidad',
+    event_privacy_public: 'Público',
+    event_privacy_vetted: 'Verificado',
+    event_privacy_private: 'Privado',
+    event_privacy_notice_public: 'Visible para todos. Dirección compartida.',
+    event_privacy_notice_vetted: 'Visible para todos. Dirección tras aprobación.',
+    event_privacy_notice_private: 'Solo con invitación. No listado.',
+    event_address_label: 'Ubicación',
+    event_address_hidden: 'Dirección oculta hasta aprobación.',
+    event_cap_label: 'Cupo',
+    event_cap_men: 'Hombres',
+    event_cap_women: 'Mujeres',
+    event_cap_couples: 'Parejas',
+    event_rsvp_title: 'RSVP',
+    event_rsvp_desc: 'Elige una categoría para solicitar cupo.',
+    event_rsvp_category_label: 'Categoría',
+    event_rsvp_submit: 'Enviar RSVP',
+    event_rsvp_sending: 'Enviando...',
+    event_rsvp_full: 'Categoría llena.',
+    event_rsvp_pending: 'RSVP pendiente.',
+    event_rsvp_approved: 'RSVP aprobado.',
+    event_rsvp_declined: 'RSVP rechazado.',
+    event_rsvp_error: 'No se pudo enviar RSVP.',
+    event_rsvp_signed_out: 'Inicia sesión para RSVP.',
+    event_rsvp_qr_title: 'QR de entrada',
+    event_rsvp_qr_desc: 'Muestra el código en la puerta.',
+    event_guest_manager_title: 'Gestor de invitados',
+    event_guest_manager_desc: 'Revisa RSVPs y badges de confianza.',
+    event_guest_manager_pending: 'Solicitudes pendientes',
+    event_guest_manager_approved: 'Invitados aprobados',
+    event_guest_manager_empty: 'Sin RSVPs.',
+    event_guest_action_approve: 'Aprobar',
+    event_guest_action_decline: 'Rechazar',
+    event_not_found_title: 'Evento no encontrado',
+    event_not_found_body: 'No pudimos encontrar este evento.',
+    event_back: 'Volver a eventos',
+    event_live_status_label: 'Estado en vivo',
+    event_live_status_open: 'Abierto',
+    event_live_status_full: 'Lleno',
+    event_live_status_last_call: 'Ultimo llamado',
+    event_live_update: 'Actualizar estado',
+    event_live_chat_title: 'Chat en vivo',
+    event_live_chat_placeholder: 'Escribe un mensaje...',
+    event_live_chat_send: 'Enviar',
+    host_dashboard_title: 'Panel de anfitrión',
+    host_dashboard_desc: 'Sigue los RSVPs de tus eventos.',
+    host_dashboard_empty: 'Sin eventos como anfitrión.',
+    host_dashboard_signin: 'Inicia sesión para ver herramientas.',
     footer_tagline: 'Hogar de la comunidad para usuarios, constelaciones, clubes e historias.',
     footer_guidelines: 'Guías y términos',
     lang_select_label: 'Seleccionar idioma',
@@ -1831,6 +2596,8 @@ const copy = {
     label_confirm_password: 'Confirmar contraseña',
     label_birth_date: 'Fecha de nacimiento',
     label_location: 'Ubicación',
+    label_location_lat: 'Latitud',
+    label_location_lng: 'Longitud',
     label_interests: 'Intereses',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
@@ -1838,6 +2605,8 @@ const copy = {
     placeholder_confirm_password: 'Repite la contraseña',
     placeholder_birth_date: 'AAAA-MM-DD',
     placeholder_location: 'Ciudad, país',
+    placeholder_location_lat: '40.41',
+    placeholder_location_lng: '-3.70',
     placeholder_interests: 'Relaciones abiertas, Voyeur, BDSM',
     interest_tag_1: 'Relaciones abiertas',
     interest_tag_2: 'Voyeur',
@@ -2105,6 +2874,126 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '')
 
+const getInitials = (name: string) =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+
+const fuzzCoordinate = (value: number, precision = 2) => {
+  const factor = 10 ** precision
+  return Math.round(value * factor) / factor
+}
+
+const cropImageToSquare = (file: File) =>
+  new Promise<{ file: File; previewUrl: string }>((resolve, reject) => {
+    const image = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    image.onload = () => {
+      const size = Math.min(image.width, image.height)
+      const offsetX = (image.width - size) / 2
+      const offsetY = (image.height - size) / 2
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const context = canvas.getContext('2d')
+      if (!context) {
+        URL.revokeObjectURL(objectUrl)
+        reject(new Error('Canvas context unavailable.'))
+        return
+      }
+      context.drawImage(image, offsetX, offsetY, size, size, 0, 0, size, size)
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            URL.revokeObjectURL(objectUrl)
+            reject(new Error('Unable to encode image.'))
+            return
+          }
+          const croppedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', {
+            type: 'image/jpeg',
+          })
+          const previewUrl = URL.createObjectURL(blob)
+          URL.revokeObjectURL(objectUrl)
+          resolve({ file: croppedFile, previewUrl })
+        },
+        'image/jpeg',
+        0.92
+      )
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Unable to load image.'))
+    }
+    image.src = objectUrl
+  })
+
+const generateCheckinToken = () => {
+  if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+    const bytes = new Uint8Array(16)
+    crypto.getRandomValues(bytes)
+    return Array.from(bytes)
+      .map((value) => value.toString(16).padStart(2, '0'))
+      .join('')
+  }
+  return Math.random().toString(16).slice(2)
+}
+
+const buildQrMatrix = (token: string, size = 21) => {
+  let seed = 0
+  for (let index = 0; index < token.length; index += 1) {
+    seed = (seed * 31 + token.charCodeAt(index)) >>> 0
+  }
+  const next = () => {
+    seed ^= seed << 13
+    seed ^= seed >>> 17
+    seed ^= seed << 5
+    return seed >>> 0
+  }
+  const matrix: boolean[][] = []
+  for (let row = 0; row < size; row += 1) {
+    const rowData: boolean[] = []
+    for (let col = 0; col < size; col += 1) {
+      rowData.push((next() + row + col) % 3 === 0)
+    }
+    matrix.push(rowData)
+  }
+  return matrix
+}
+
+const QrToken = ({ token }: { token: string }) => {
+  const matrix = useMemo(() => buildQrMatrix(token), [token])
+  const cellSize = 4
+  const viewSize = matrix.length * cellSize
+
+  return (
+    <svg
+      className="qr-grid"
+      viewBox={`0 0 ${viewSize} ${viewSize}`}
+      aria-label={token}
+      role="img"
+    >
+      <rect width={viewSize} height={viewSize} fill="var(--surface)" rx="6" />
+      {matrix.map((row, rowIndex) =>
+        row.map((isFilled, colIndex) =>
+          isFilled ? (
+            <rect
+              key={`${rowIndex}-${colIndex}`}
+              x={colIndex * cellSize}
+              y={rowIndex * cellSize}
+              width={cellSize}
+              height={cellSize}
+              fill="var(--ink)"
+            />
+          ) : null
+        )
+      )}
+    </svg>
+  )
+}
+
 const getStatusLabel = (status: string, translation: typeof copy.en) => {
   const normalized = status.toLowerCase()
   if (normalized === 'approved') {
@@ -2123,6 +3012,115 @@ const getStatusLabel = (status: string, translation: typeof copy.en) => {
 }
 
 const useAppContext = () => useOutletContext<AppContext>()
+
+const ConstellationGraph = ({
+  constellation,
+  profiles,
+  lang,
+}: {
+  constellation: Constellation
+  profiles: Profile[]
+  lang: Lang
+}) => {
+  const members = (constellation.members ?? [])
+    .map((slug) => profiles.find((profile) => profile.slug === slug))
+    .filter(Boolean) as Profile[]
+  const links = (constellation.links ?? []).filter(
+    (link) =>
+      members.some((profile) => profile.slug === link.user_a) &&
+      members.some((profile) => profile.slug === link.user_b)
+  )
+
+  const width = 260
+  const height = 190
+  const nodeSize = 44
+  const centerX = width / 2
+  const centerY = height / 2
+  const radius = Math.min(centerX, centerY) - nodeSize
+  const angleOffset = -Math.PI / 2
+  const count = Math.max(members.length, 1)
+  const angleStep = (Math.PI * 2) / count
+
+  const positions = members.map((profile, index) => {
+    if (members.length === 1) {
+      return {
+        profile,
+        x: centerX,
+        y: centerY,
+      }
+    }
+    const angle = angleOffset + angleStep * index
+    return {
+      profile,
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
+    }
+  })
+
+  const nodeLookup = positions.reduce<Record<string, { x: number; y: number }>>(
+    (acc, node) => {
+      acc[node.profile.slug] = { x: node.x, y: node.y }
+      return acc
+    },
+    {}
+  )
+
+  return (
+    <div className="constellation-graph" aria-label={constellation.name}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="presentation"
+        aria-hidden="true"
+      >
+        {links.map((link) => {
+          const source = nodeLookup[link.user_a]
+          const target = nodeLookup[link.user_b]
+          if (!source || !target) {
+            return null
+          }
+          const typeClass = `constellation-link--${slugify(link.link_type)}`
+          const statusClass =
+            link.status === 'Pending' ? 'constellation-link--pending' : ''
+          return (
+            <line
+              key={`${link.user_a}-${link.user_b}-${link.link_type}`}
+              x1={source.x}
+              y1={source.y}
+              x2={target.x}
+              y2={target.y}
+              className={`constellation-link ${typeClass} ${statusClass}`}
+            />
+          )
+        })}
+      </svg>
+      {positions.map(({ profile, x, y }) => (
+        <Link
+          key={profile.slug}
+          to={`/${lang}/profiles/${profile.slug}`}
+          className="constellation-node"
+          style={{
+            left: `${x - nodeSize / 2}px`,
+            top: `${y - nodeSize / 2}px`,
+          }}
+          aria-label={profile.display_name}
+          title={profile.display_name}
+        >
+          {profile.photo_url ? (
+            <img
+              src={profile.photo_url}
+              alt={profile.display_name}
+              loading="lazy"
+            />
+          ) : (
+            <span className="constellation-node-initials">
+              {getInitials(profile.display_name)}
+            </span>
+          )}
+        </Link>
+      ))}
+    </div>
+  )
+}
 
 const SiteLayout = ({ context }: { context: AppContext }) => {
   const location = useLocation()
@@ -2189,8 +3187,9 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
         <nav className="nav">
           <a href={`/${lang}#constellations`}>{copy.nav_constellations}</a>
           <Link to={`/${lang}/clubs`}>{copy.nav_clubs}</Link>
+          <Link to={`/${lang}/events`}>{copy.nav_events}</Link>
           <a href={`/${lang}#map`}>{copy.nav_map}</a>
-          <a href={`/${lang}#blog`}>{copy.nav_blog}</a>
+          <Link to={`/${lang}/blog`}>{copy.nav_blog}</Link>
           {!authUser ? <Link to={`/${lang}/register`}>{copy.nav_join}</Link> : null}
           {isAdmin ? (
             <Link to={`/${lang}/admin`}>{copy.nav_admin}</Link>
@@ -2227,6 +3226,7 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
               </summary>
               <div className="user-dropdown">
                 <Link to={`/${lang}/profile`}>{copy.user_menu_edit}</Link>
+                <Link to={`/${lang}/events/host`}>{copy.user_menu_host}</Link>
                 <button type="button" onClick={handleAuthClick}>
                   {copy.user_menu_signout}
                 </button>
@@ -2258,6 +3258,8 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
 const HomePage = () => {
   const {
     clubs,
+    constellations,
+    profiles,
     posts,
     pendingReviews,
     isAdmin,
@@ -2354,18 +3356,15 @@ const HomePage = () => {
           <p>{copy.const_subtitle}</p>
         </div>
         <div className="constellation-wrap reveal">
-          <div className="constellation">
-            <div className="node">A</div>
-            <div className="node">B</div>
-            <div className="node">C</div>
-            <div className="node">D</div>
-            <svg viewBox="0 0 220 160" aria-hidden="true">
-              <line x1="40" y1="40" x2="120" y2="30" />
-              <line x1="120" y1="30" x2="170" y2="80" />
-              <line x1="120" y1="30" x2="70" y2="120" />
-              <line x1="70" y1="120" x2="170" y2="80" />
-            </svg>
-          </div>
+          {constellations.length && profiles.length ? (
+            <ConstellationGraph
+              constellation={constellations[0]}
+              profiles={profiles}
+              lang={lang}
+            />
+          ) : (
+            <div className="constellation-empty">{copy.clubs_loading}</div>
+          )}
           <div className="constellation-copy">
             <h4>{copy.const_card_title}</h4>
             <p>
@@ -2594,6 +3593,55 @@ const MapPage = () => {
       title={copy.map_page_title}
       description={copy.map_page_desc}
     />
+  )
+}
+
+const BlogPage = () => {
+  const { posts } = useAppContext()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+
+  return (
+    <section className="feature">
+      <div className="section-title">
+        <h3>{copy.blog_title}</h3>
+        <p>{copy.blog_desc}</p>
+      </div>
+      <div className="blog-grid">
+        {posts.length ? (
+          posts.map((post) => {
+            const meta = getLocalizedList(post.meta, lang)
+            const postDate = getLocalizedText(post.date, lang)
+            const postTitle = getLocalizedText(post.title, lang)
+            const postUrl = getLocalizedText(post.url, lang)
+            const postKey = `${getLocalizedText(post.title, 'en')}-${getLocalizedText(
+              post.date,
+              'en'
+            )}`
+            return (
+              <a
+                className="post reveal"
+                href={postUrl}
+                target="_blank"
+                rel="noreferrer"
+                key={postKey}
+              >
+                <p className="post-date">{postDate}</p>
+                <h4>{postTitle}</h4>
+                <p>{getLocalizedText(post.excerpt, lang)}</p>
+                <div className="post-meta">
+                  <span>{meta[0]}</span>
+                  <span>{meta[1]}</span>
+                </div>
+              </a>
+            )
+          })
+        ) : (
+          <p className="muted">{copy.blog_loading}</p>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -3015,6 +4063,15 @@ const ProfilePage = () => {
     firebaseConfigured,
     handleProfileLoad,
     handleProfileUpdate,
+    handlePhotoUpload,
+    handleNotificationsEnable,
+    handleNotificationsDisable,
+    handleVerificationSubmit: handleVerificationSubmitRequest,
+    relationshipLinks,
+    pendingLinkRequests,
+    handleLinkRequest,
+    handleLinkResponse,
+    handleLinkVisibility,
   } = useAppContext()
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
@@ -3023,11 +4080,29 @@ const ProfilePage = () => {
     displayName: authUser || '',
     birthDate: '',
     location: '',
+    locationLat: '',
+    locationLng: '',
     interests: '',
     consentPrivacy: true,
   })
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState('')
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState('')
+  const [photoProcessedFile, setPhotoProcessedFile] = useState<File | null>(null)
+  const [photoStatus, setPhotoStatus] = useState('')
+  const [photoLoading, setPhotoLoading] = useState(false)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [notificationsStatus, setNotificationsStatus] = useState('')
+  const [verificationFile, setVerificationFile] = useState<File | null>(null)
+  const [verificationStatus, setVerificationStatus] = useState('')
+  const [verificationLoading, setVerificationLoading] = useState(false)
   const [profileStatus, setProfileStatus] = useState('')
   const [profileLoading, setProfileLoading] = useState(false)
+  const [linkEmail, setLinkEmail] = useState('')
+  const [linkType, setLinkType] =
+    useState<RelationshipLink['link_type']>('Polycule Member')
+  const [linkStatus, setLinkStatus] = useState('')
+  const [linkLoading, setLinkLoading] = useState(false)
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -3045,15 +4120,53 @@ const ProfilePage = () => {
         displayName: result.data.displayName || authUser || '',
         birthDate: result.data.birthDate || '',
         location: result.data.location || '',
+        locationLat: result.data.locationLat || '',
+        locationLng: result.data.locationLng || '',
         interests: (result.data.interests || []).join(', '),
         consentPrivacy: result.data.consentPrivacy ?? true,
       })
+      if (typeof result.data.photoUrl === 'string') {
+        setProfilePhotoUrl(result.data.photoUrl)
+      }
     }
     loadProfile()
   }, [authUid, authUser, firebaseConfigured, handleProfileLoad])
 
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl)
+      }
+    }
+  }, [photoPreviewUrl])
+
+  useEffect(() => {
+    if (typeof Notification === 'undefined') {
+      setNotificationsEnabled(false)
+      return
+    }
+    setNotificationsEnabled(Notification.permission === 'granted')
+  }, [])
+
   const underage =
     profileForm.birthDate.length > 0 && !isAdult(profileForm.birthDate)
+
+  const outgoingRequests = relationshipLinks.filter(
+    (link) => link.status === 'Pending' && link.user_a === authUid
+  )
+  const confirmedLinks = relationshipLinks.filter(
+    (link) => link.status === 'Confirmed'
+  )
+
+  const getCounterpart = (link: RelationshipLink) => {
+    const isSelfA = link.user_a === authUid
+    const name = isSelfA ? link.user_b_name : link.user_a_name
+    const email = isSelfA ? link.user_b_email : link.user_a_email
+    return {
+      label: name || email || 'Member',
+      email,
+    }
+  }
 
   const handleProfileSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -3066,6 +4179,8 @@ const ProfilePage = () => {
       displayName: profileForm.displayName.trim(),
       birthDate: profileForm.birthDate,
       location: profileForm.location.trim(),
+      locationLat: profileForm.locationLat.trim(),
+      locationLng: profileForm.locationLng.trim(),
       interests: profileForm.interests
         .split(',')
         .map((item) => item.trim())
@@ -3074,6 +4189,74 @@ const ProfilePage = () => {
     })
     setProfileStatus(result.message)
     setProfileLoading(false)
+  }
+
+  const handlePhotoSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const uploadFile = photoProcessedFile || photoFile
+    if (!uploadFile) {
+      setPhotoStatus(copy.photo_upload_error)
+      return
+    }
+    setPhotoLoading(true)
+    const result = await handlePhotoUpload(uploadFile)
+    if (result.ok && result.url) {
+      setProfilePhotoUrl(result.url)
+      setPhotoFile(null)
+      setPhotoProcessedFile(null)
+      if (photoPreviewUrl) {
+        URL.revokeObjectURL(photoPreviewUrl)
+        setPhotoPreviewUrl('')
+      }
+    }
+    setPhotoStatus(result.message)
+    setPhotoLoading(false)
+  }
+
+  const handleLinkSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setLinkLoading(true)
+    const result = await handleLinkRequest({
+      email: linkEmail,
+      linkType,
+    })
+    setLinkStatus(result.message)
+    if (result.ok) {
+      setLinkEmail('')
+    }
+    setLinkLoading(false)
+  }
+
+  const handleNotificationsToggle = async () => {
+    setNotificationsStatus('')
+    if (notificationsEnabled) {
+      const result = await handleNotificationsDisable()
+      setNotificationsStatus(result.message)
+      if (result.ok) {
+        setNotificationsEnabled(false)
+      }
+      return
+    }
+    const result = await handleNotificationsEnable()
+    setNotificationsStatus(result.message)
+    if (result.ok) {
+      setNotificationsEnabled(true)
+    }
+  }
+
+  const handleVerificationSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!verificationFile) {
+      setVerificationStatus(copy.verification_status_error)
+      return
+    }
+    setVerificationLoading(true)
+    const result = await handleVerificationSubmitRequest(verificationFile)
+    setVerificationStatus(result.message)
+    if (result.ok) {
+      setVerificationFile(null)
+    }
+    setVerificationLoading(false)
   }
 
   if (!authUser) {
@@ -3159,6 +4342,36 @@ const ProfilePage = () => {
                 }
               />
             </label>
+            <label className="register-field">
+              {copy.label_location_lat}
+              <input
+                className="register-input"
+                type="text"
+                placeholder={copy.placeholder_location_lat}
+                value={profileForm.locationLat}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    locationLat: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="register-field">
+              {copy.label_location_lng}
+              <input
+                className="register-input"
+                type="text"
+                placeholder={copy.placeholder_location_lng}
+                value={profileForm.locationLng}
+                onChange={(event) =>
+                  setProfileForm((prev) => ({
+                    ...prev,
+                    locationLng: event.target.value,
+                  }))
+                }
+              />
+            </label>
             <label className="register-field register-span">
               {copy.label_interests}
               <input
@@ -3204,6 +4417,314 @@ const ProfilePage = () => {
             </div>
           </form>
         </div>
+      </div>
+      <div className="detail-grid photo-grid">
+        <div className="data-card detail-card">
+          <h5>{copy.photo_upload_label}</h5>
+          <div className="photo-panel">
+            <div className="photo-preview">
+              {photoPreviewUrl || profilePhotoUrl ? (
+                <img
+                  src={photoPreviewUrl || profilePhotoUrl}
+                  alt={profileForm.displayName}
+                />
+              ) : (
+                <div className="photo-placeholder">
+                  {getInitials(profileForm.displayName || authUser || 'User')}
+                </div>
+              )}
+            </div>
+            <form className="link-form" onSubmit={handlePhotoSubmit}>
+              <label>
+                {copy.photo_upload_label}
+                <input
+                  className="register-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={async (eventInput) => {
+                    const nextFile = eventInput.target.files?.[0] || null
+                    setPhotoStatus('')
+                    setPhotoFile(nextFile)
+                    setPhotoProcessedFile(null)
+                    if (photoPreviewUrl) {
+                      URL.revokeObjectURL(photoPreviewUrl)
+                      setPhotoPreviewUrl('')
+                    }
+                    if (!nextFile) {
+                      return
+                    }
+                    try {
+                      const result = await cropImageToSquare(nextFile)
+                      setPhotoProcessedFile(result.file)
+                      setPhotoPreviewUrl(result.previewUrl)
+                    } catch (error) {
+                      setPhotoStatus(copy.photo_upload_error)
+                    }
+                  }}
+                />
+              </label>
+              <button className="cta" type="submit" disabled={photoLoading || !photoFile}>
+                {photoLoading ? copy.event_rsvp_sending : copy.photo_upload_button}
+              </button>
+              {photoStatus ? <p className="register-status">{photoStatus}</p> : null}
+            </form>
+          </div>
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.notifications_title}</h5>
+          <p className="muted">{copy.notifications_desc}</p>
+          <div className="link-form">
+            {typeof Notification !== 'undefined' &&
+            Notification.permission === 'denied' ? (
+              <p className="muted">{copy.notifications_blocked}</p>
+            ) : null}
+            <button className="cta" type="button" onClick={handleNotificationsToggle}>
+              {notificationsEnabled
+                ? copy.notifications_disable
+                : copy.notifications_enable}
+            </button>
+            {notificationsStatus ? (
+              <p className="register-status">{notificationsStatus}</p>
+            ) : null}
+          </div>
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.verification_title}</h5>
+          <p className="muted">{copy.verification_desc}</p>
+          <div className="verification-phrase">
+            <span>{copy.verification_phrase_label}</span>
+            <strong>{copy.verification_phrase}</strong>
+          </div>
+          <form className="link-form" onSubmit={handleVerificationSubmit}>
+            <label>
+              {copy.verification_upload_label}
+              <input
+                className="register-input"
+                type="file"
+                accept="image/*"
+                onChange={(eventInput) =>
+                  setVerificationFile(eventInput.target.files?.[0] || null)
+                }
+              />
+            </label>
+            <button
+              className="cta"
+              type="submit"
+              disabled={verificationLoading || !verificationFile}
+            >
+              {verificationLoading
+                ? copy.verification_submitting
+                : copy.verification_submit}
+            </button>
+            {verificationStatus ? (
+              <p className="register-status">{verificationStatus}</p>
+            ) : null}
+          </form>
+        </div>
+      </div>
+      <div className="detail-grid link-grid">
+        <div className="data-card detail-card">
+          <h5>{copy.link_section_title}</h5>
+          <p className="muted">{copy.link_section_subtitle}</p>
+          <form className="link-form" onSubmit={handleLinkSubmit}>
+            <label>
+              {copy.link_request_email_label}
+              <input
+                className="register-input"
+                type="email"
+                placeholder={copy.link_request_email_placeholder}
+                value={linkEmail}
+                onChange={(event) => setLinkEmail(event.target.value)}
+              />
+            </label>
+            <label>
+              {copy.link_request_type_label}
+              <select
+                value={linkType}
+                onChange={(event) =>
+                  setLinkType(event.target.value as RelationshipLink['link_type'])
+                }
+              >
+                <option value="Primary">Primary</option>
+                <option value="Play Partner">Play Partner</option>
+                <option value="Polycule Member">Polycule Member</option>
+              </select>
+            </label>
+            <button className="cta" type="submit" disabled={linkLoading}>
+              {linkLoading ? copy.link_request_sending : copy.link_request_send}
+            </button>
+            {linkStatus ? <p className="register-status">{linkStatus}</p> : null}
+          </form>
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.link_requests_incoming_title}</h5>
+          {pendingLinkRequests.length ? (
+            <div className="link-list">
+              {pendingLinkRequests.map((link) => {
+                const counterpart = getCounterpart(link)
+                return (
+                  <div key={link.id} className="link-row">
+                    <div>
+                      <p className="link-name">{counterpart.label}</p>
+                      <p className="muted">{link.link_type}</p>
+                    </div>
+                    <div className="link-actions">
+                      <button
+                        className="cta"
+                        type="button"
+                        onClick={() =>
+                          link.id
+                            ? handleLinkResponse(link.id, 'Confirmed')
+                            : Promise.resolve()
+                        }
+                      >
+                        {copy.link_request_accept}
+                      </button>
+                      <button
+                        className="ghost"
+                        type="button"
+                        onClick={() =>
+                          link.id
+                            ? handleLinkResponse(link.id, 'Rejected')
+                            : Promise.resolve()
+                        }
+                      >
+                        {copy.link_request_decline}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="muted">{copy.link_requests_empty}</p>
+          )}
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.link_requests_outgoing_title}</h5>
+          {outgoingRequests.length ? (
+            <div className="link-list">
+              {outgoingRequests.map((link) => {
+                const counterpart = getCounterpart(link)
+                return (
+                  <div key={link.id} className="link-row">
+                    <div>
+                      <p className="link-name">{counterpart.label}</p>
+                      <p className="muted">{link.link_type}</p>
+                    </div>
+                    <span className="link-pill">{link.status}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="muted">{copy.link_requests_empty}</p>
+          )}
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.link_requests_confirmed_title}</h5>
+          {confirmedLinks.length ? (
+            <div className="link-list">
+              {confirmedLinks.map((link) => {
+                const counterpart = getCounterpart(link)
+                const merged = Boolean(link.merge_visibility)
+                return (
+                  <div key={link.id} className="link-row">
+                    <div>
+                      <p className="link-name">{counterpart.label}</p>
+                      <p className="muted">{link.link_type}</p>
+                    </div>
+                    <label className="link-visibility">
+                      <input
+                        type="checkbox"
+                        checked={merged}
+                        onChange={(event) =>
+                          link.id
+                            ? handleLinkVisibility(link.id, event.target.checked)
+                            : Promise.resolve()
+                        }
+                      />
+                      <span>{copy.link_request_merge_label}</span>
+                      <em>{merged ? copy.link_request_merge_on : copy.link_request_merge_off}</em>
+                    </label>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="muted">{copy.link_requests_empty}</p>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+const PublicProfilePage = () => {
+  const { profiles } = useAppContext()
+  const { slug } = useParams()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const profile = profiles.find((item) => item.slug === slug)
+
+  if (!profile) {
+    return <Navigate to={`/${lang}`} replace />
+  }
+
+  return (
+    <section className="feature">
+      <div className="section-title">
+        <p className="breadcrumb">
+          <Link to={`/${lang}#constellations`}>{copy.nav_constellations}</Link> /{' '}
+          {profile.display_name}
+        </p>
+        <div className="profile-hero">
+          <div className="photo-preview">
+            {profile.photo_url ? (
+              <img src={profile.photo_url} alt={profile.display_name} />
+            ) : (
+              <div className="photo-placeholder">
+                {getInitials(profile.display_name)}
+              </div>
+            )}
+          </div>
+        </div>
+        <h3>{profile.display_name}</h3>
+        {profile.summary ? <p>{profile.summary}</p> : null}
+      </div>
+      <div className="detail-grid">
+        <div className="data-card detail-card">
+          <h5>{copy.label_location}</h5>
+          <p>{profile.location || '—'}</p>
+          {typeof profile.lat === 'number' && typeof profile.lng === 'number' ? (
+            <p className="muted">
+              ~{fuzzCoordinate(profile.lat)}, {fuzzCoordinate(profile.lng)}
+            </p>
+          ) : null}
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.label_interests}</h5>
+          {profile.interests?.length ? (
+            <div className="tag-row">
+              {profile.interests.map((interest) => (
+                <span key={`${profile.slug}-${interest}`}>{interest}</span>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">—</p>
+          )}
+        </div>
+        {profile.badges?.length ? (
+          <div className="data-card detail-card">
+            <h5>{copy.register_trust_label}</h5>
+            <div className="tag-row">
+              {profile.badges.map((badge) => (
+                <span key={`${profile.slug}-${badge}`}>{badge}</span>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   )
@@ -3285,8 +4806,15 @@ const GuidelinesPage = () => {
 }
 
 const AdminPage = () => {
-  const { pendingReviews, handleReviewModeration, isAdmin, reviews, clubNames } =
-    useAppContext()
+  const {
+    pendingReviews,
+    handleReviewModeration,
+    isAdmin,
+    reviews,
+    clubNames,
+    verificationRequests,
+    handleVerificationModeration,
+  } = useAppContext()
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
@@ -3375,6 +4903,58 @@ const AdminPage = () => {
           </div>
         ) : (
           <p className="muted">{copy.admin_no_pending}</p>
+        )}
+      </div>
+      <div className="admin-panel">
+        <div className="admin-panel-header">
+          <h4>{copy.verification_admin_title}</h4>
+          <p className="muted">{copy.verification_admin_desc}</p>
+        </div>
+        {verificationRequests.length ? (
+          <div className="admin-list">
+            {verificationRequests.map((request) => (
+              <div className="admin-item" key={request.id || request.user_uid}>
+                <div className="admin-item-main">
+                  <p className="review-name">{request.user_name}</p>
+                  <p className="muted">{request.user_email}</p>
+                  <p className="muted">
+                    {copy.verification_phrase_label}: {request.phrase}
+                  </p>
+                  {request.photo_url ? (
+                    <img
+                      className="admin-photo"
+                      src={request.photo_url}
+                      alt={request.user_name}
+                    />
+                  ) : null}
+                </div>
+                <div className="admin-actions">
+                  <button
+                    className="ghost"
+                    type="button"
+                    onClick={() =>
+                      request.id &&
+                      handleVerificationModeration(request.id, 'rejected')
+                    }
+                  >
+                    {copy.verification_admin_reject}
+                  </button>
+                  <button
+                    className="cta"
+                    type="button"
+                    onClick={() =>
+                      request.id &&
+                      handleVerificationModeration(request.id, 'approved')
+                    }
+                  >
+                    {copy.verification_admin_approve}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">{copy.verification_admin_empty}</p>
         )}
       </div>
       <div className="admin-panel">
@@ -3539,6 +5119,607 @@ const ClubsPage = () => {
             <p className="review-status">{clubStatus}</p>
           ) : null}
         </form>
+      </div>
+    </section>
+  )
+}
+
+const EventsPage = () => {
+  const { events, authEmail } = useAppContext()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const email = authEmail?.toLowerCase()
+
+  const visibleEvents = useMemo(() => {
+    return events
+      .filter((event) => {
+        if (event.privacy_tier !== 'Private') {
+          return true
+        }
+        const invited = event.invited_emails?.map((value) => value.toLowerCase()) || []
+        return email ? invited.includes(email) || email === event.host_email.toLowerCase() : false
+      })
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }, [events, email])
+
+  return (
+    <section className="feature">
+      <div className="section-title">
+        <h3>{copy.events_page_title}</h3>
+        <p>{copy.events_page_desc}</p>
+      </div>
+      <div className="club-grid">
+        {visibleEvents.map((event) => {
+          const privacyLabel =
+            event.privacy_tier === 'Public'
+              ? copy.event_privacy_public
+              : event.privacy_tier === 'Vetted'
+                ? copy.event_privacy_vetted
+                : copy.event_privacy_private
+
+          return (
+            <article className="data-card reveal" key={event.slug}>
+              <h5>
+                <Link to={`/${lang}/events/${event.slug}`}>{event.title}</Link>
+              </h5>
+              <p>{event.summary}</p>
+              <div className="meta-row">
+                <span>{event.date}</span>
+                <span>{event.city}</span>
+                <span>{privacyLabel}</span>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+const EventDetail = () => {
+  const {
+    events,
+    authUser,
+    authEmail,
+    authUid,
+    firebaseConfigured,
+    subscribeEventRsvps,
+    handleEventRsvpSubmit,
+    handleEventRsvpUpdate,
+  } = useAppContext()
+  const { slug } = useParams()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const event = events.find((item) => item.slug === slug)
+  const [rsvps, setRsvps] = useState<EventRsvp[]>([])
+  const [rsvpCategory, setRsvpCategory] = useState<keyof EventCap>('couples')
+  const [rsvpStatus, setRsvpStatus] = useState('')
+  const [rsvpLoading, setRsvpLoading] = useState(false)
+  const [liveStatus, setLiveStatus] = useState<LiveStatusKey | null>(null)
+  const [chatMessages, setChatMessages] = useState<
+    Array<{ id: string; name: string; text: string; time: string }>
+  >([])
+  const [chatText, setChatText] = useState('')
+  const socketRef = useRef<Socket | null>(null)
+
+  useEffect(() => {
+    if (!event || !firebaseConfigured) {
+      setRsvps([])
+      return
+    }
+    const unsubscribe = subscribeEventRsvps(event.slug, setRsvps)
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    }
+  }, [event, firebaseConfigured, subscribeEventRsvps])
+
+  useEffect(() => {
+    if (!event) {
+      return
+    }
+    const socket = io()
+    socketRef.current = socket
+    socket.emit('joinEvent', { eventSlug: event.slug })
+    socket.on('eventStatus', (payload) => {
+      if (payload?.eventSlug === event.slug) {
+        setLiveStatus(payload.status as LiveStatusKey)
+      }
+    })
+    socket.on('eventMessage', (message) => {
+      if (!message?.id) {
+        return
+      }
+      setChatMessages((prev) => [...prev, message])
+    })
+    return () => {
+      socket.disconnect()
+      socketRef.current = null
+    }
+  }, [event])
+
+  if (!event) {
+    return (
+      <section className="feature">
+        <div className="section-title">
+          <h3>{copy.event_not_found_title}</h3>
+          <p>{copy.event_not_found_body}</p>
+        </div>
+        <Link to={`/${lang}/events`} className="ghost">
+          {copy.event_back}
+        </Link>
+      </section>
+    )
+  }
+
+  const isHost = authEmail?.toLowerCase() === event.host_email.toLowerCase()
+  const invited =
+    event.privacy_tier !== 'Private'
+      ? true
+      : authEmail
+        ? event.invited_emails?.map((value) => value.toLowerCase()).includes(
+            authEmail.toLowerCase()
+          )
+        : false
+
+  if (event.privacy_tier === 'Private' && !invited && !isHost) {
+    return (
+      <section className="feature">
+        <div className="section-title">
+          <h3>{event.title}</h3>
+          <p>{copy.event_privacy_notice_private}</p>
+        </div>
+        <Link to={`/${lang}/events`} className="ghost">
+          {copy.event_back}
+        </Link>
+      </section>
+    )
+  }
+
+  const privacyNote =
+    event.privacy_tier === 'Public'
+      ? copy.event_privacy_notice_public
+      : event.privacy_tier === 'Vetted'
+        ? copy.event_privacy_notice_vetted
+        : copy.event_privacy_notice_private
+  const privacyLabel =
+    event.privacy_tier === 'Public'
+      ? copy.event_privacy_public
+      : event.privacy_tier === 'Vetted'
+        ? copy.event_privacy_vetted
+        : copy.event_privacy_private
+
+  const userRsvp = authUid
+    ? rsvps.find((item) => item.user_uid === authUid)
+    : undefined
+  const approvedRsvps = rsvps.filter((item) => item.status === 'Approved')
+  const pendingRsvps = rsvps.filter((item) => item.status === 'Pending')
+
+  const counts = rsvps.reduce(
+    (acc, item) => {
+      if (item.status !== 'Declined') {
+        acc[item.category] += 1
+      }
+      return acc
+    },
+    { men: 0, women: 0, couples: 0 }
+  )
+  const isFull = counts[rsvpCategory] >= event.cap[rsvpCategory]
+  const canSubmit =
+    firebaseConfigured &&
+    authUser &&
+    !userRsvp &&
+    !rsvpLoading &&
+    !isFull
+
+  const addressVisible =
+    event.privacy_tier === 'Public' ||
+    isHost ||
+    (event.privacy_tier === 'Vetted' && userRsvp?.status === 'Approved')
+
+  const handleSubmit = async (eventForm: FormEvent<HTMLFormElement>) => {
+    eventForm.preventDefault()
+    if (!event) {
+      return
+    }
+    setRsvpLoading(true)
+    const result = await handleEventRsvpSubmit(event, rsvpCategory)
+    setRsvpStatus(result.message)
+    setRsvpLoading(false)
+  }
+
+  const handleLiveStatusUpdate = (status: LiveStatusKey) => {
+    if (!event || !socketRef.current) {
+      return
+    }
+    socketRef.current.emit('eventStatus', { eventSlug: event.slug, status })
+    setLiveStatus(status)
+  }
+
+  const handleChatSubmit = (eventForm: FormEvent<HTMLFormElement>) => {
+    eventForm.preventDefault()
+    if (!event || !socketRef.current) {
+      return
+    }
+    const text = chatText.trim()
+    if (!text) {
+      return
+    }
+    socketRef.current.emit('eventMessage', {
+      eventSlug: event.slug,
+      name: authUser || authEmail || 'Guest',
+      text,
+    })
+    setChatText('')
+  }
+
+  const statusMessage =
+    userRsvp?.status === 'Approved'
+      ? copy.event_rsvp_approved
+      : userRsvp?.status === 'Declined'
+        ? copy.event_rsvp_declined
+        : userRsvp?.status === 'Pending'
+          ? copy.event_rsvp_pending
+          : rsvpStatus
+
+  const liveStatusLabel =
+    liveStatus === 'full'
+      ? copy.event_live_status_full
+      : liveStatus === 'last_call'
+        ? copy.event_live_status_last_call
+        : copy.event_live_status_open
+
+  return (
+    <section className="feature">
+      <div className="section-title">
+        <p className="breadcrumb">
+          <Link to={`/${lang}/events`}>{copy.events_page_title}</Link> / {event.title}
+        </p>
+        <h3>{event.title}</h3>
+        <p>{event.summary}</p>
+        <div className="badge-row">
+          <span>{event.date}</span>
+          <span>{event.city}</span>
+          <span>{privacyLabel}</span>
+        </div>
+      </div>
+      <div className="detail-grid">
+        <div className="data-card detail-card">
+          <h5>{copy.event_privacy_label}</h5>
+          <p>{privacyNote}</p>
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.event_address_label}</h5>
+          <p>{addressVisible ? event.address || '—' : copy.event_address_hidden}</p>
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.event_cap_label}</h5>
+          <div className="info-grid">
+            <div>
+              <p className="info-label">{copy.event_cap_men}</p>
+              <p>
+                {counts.men}/{event.cap.men}
+              </p>
+            </div>
+            <div>
+              <p className="info-label">{copy.event_cap_women}</p>
+              <p>
+                {counts.women}/{event.cap.women}
+              </p>
+            </div>
+            <div>
+              <p className="info-label">{copy.event_cap_couples}</p>
+              <p>
+                {counts.couples}/{event.cap.couples}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.event_rsvp_title}</h5>
+          <p className="muted">{copy.event_rsvp_desc}</p>
+          {!authUser ? (
+            <p className="muted">{copy.event_rsvp_signed_out}</p>
+          ) : userRsvp ? (
+            <p className="muted">{statusMessage}</p>
+          ) : (
+            <form className="link-form" onSubmit={handleSubmit}>
+              <label>
+                {copy.event_rsvp_category_label}
+                <select
+                  value={rsvpCategory}
+                  onChange={(eventInput) =>
+                    setRsvpCategory(eventInput.target.value as keyof EventCap)
+                  }
+                >
+                  <option value="men">{copy.event_cap_men}</option>
+                  <option value="women">{copy.event_cap_women}</option>
+                  <option value="couples">{copy.event_cap_couples}</option>
+                </select>
+              </label>
+              {isFull ? <p className="muted">{copy.event_rsvp_full}</p> : null}
+              <button className="cta" type="submit" disabled={!canSubmit}>
+                {rsvpLoading ? copy.event_rsvp_sending : copy.event_rsvp_submit}
+              </button>
+            </form>
+          )}
+          {!userRsvp && statusMessage ? (
+            <p className="register-status">{statusMessage}</p>
+          ) : null}
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.event_live_status_label}</h5>
+          <p className="muted">{liveStatusLabel}</p>
+          {isHost ? (
+            <div className="link-actions">
+              <button
+                className="ghost"
+                type="button"
+                onClick={() => handleLiveStatusUpdate('open')}
+              >
+                {copy.event_live_status_open}
+              </button>
+              <button
+                className="ghost"
+                type="button"
+                onClick={() => handleLiveStatusUpdate('full')}
+              >
+                {copy.event_live_status_full}
+              </button>
+              <button
+                className="ghost"
+                type="button"
+                onClick={() => handleLiveStatusUpdate('last_call')}
+              >
+                {copy.event_live_status_last_call}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <div className="detail-grid guest-grid">
+        <div className="data-card detail-card">
+          <h5>{copy.event_live_chat_title}</h5>
+          <div className="chat-panel">
+            <div className="chat-feed">
+              {chatMessages.length ? (
+                chatMessages.slice(-12).map((message) => (
+                  <div key={message.id} className="chat-message">
+                    <p className="chat-name">{message.name}</p>
+                    <p>{message.text}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="muted">{copy.event_guest_manager_empty}</p>
+              )}
+            </div>
+            <form className="link-form" onSubmit={handleChatSubmit}>
+              <label>
+                {copy.event_live_chat_title}
+                <input
+                  className="register-input"
+                  type="text"
+                  placeholder={copy.event_live_chat_placeholder}
+                  value={chatText}
+                  onChange={(eventInput) => setChatText(eventInput.target.value)}
+                />
+              </label>
+              <button className="cta" type="submit">
+                {copy.event_live_chat_send}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {userRsvp?.status === 'Approved' && userRsvp.checkin_token ? (
+        <div className="data-card detail-card qr-card">
+          <h5>{copy.event_rsvp_qr_title}</h5>
+          <p className="muted">{copy.event_rsvp_qr_desc}</p>
+          <div className="qr-wrap">
+            <QrToken token={userRsvp.checkin_token} />
+            <p className="muted">{userRsvp.checkin_token.slice(0, 12)}</p>
+          </div>
+        </div>
+      ) : null}
+      {isHost ? (
+        <div className="detail-grid guest-grid">
+          <div className="data-card detail-card">
+            <h5>{copy.event_guest_manager_title}</h5>
+            <p className="muted">{copy.event_guest_manager_desc}</p>
+            {pendingRsvps.length ? (
+              <div className="link-list">
+                {pendingRsvps.map((rsvp) => (
+                  <div key={rsvp.id} className="link-row">
+                    <div>
+                      <p className="link-name">{rsvp.user_name}</p>
+                      <p className="muted">
+                        {rsvp.category} · {rsvp.user_email}
+                      </p>
+                      {rsvp.trust_badges?.length ? (
+                        <div className="tag-row">
+                          {rsvp.trust_badges.map((badge) => (
+                            <span key={`${rsvp.user_uid}-${badge}`}>{badge}</span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="link-actions">
+                      <button
+                        className="cta"
+                        type="button"
+                        onClick={() =>
+                          rsvp.id
+                            ? handleEventRsvpUpdate(rsvp.id, 'Approved')
+                            : Promise.resolve()
+                        }
+                      >
+                        {copy.event_guest_action_approve}
+                      </button>
+                      <button
+                        className="ghost"
+                        type="button"
+                        onClick={() =>
+                          rsvp.id
+                            ? handleEventRsvpUpdate(rsvp.id, 'Declined')
+                            : Promise.resolve()
+                        }
+                      >
+                        {copy.event_guest_action_decline}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">{copy.event_guest_manager_empty}</p>
+            )}
+          </div>
+          <div className="data-card detail-card">
+            <h5>{copy.event_guest_manager_approved}</h5>
+            {approvedRsvps.length ? (
+              <div className="link-list">
+                {approvedRsvps.map((rsvp) => (
+                  <div key={rsvp.id} className="link-row">
+                    <div>
+                      <p className="link-name">{rsvp.user_name}</p>
+                      <p className="muted">
+                        {rsvp.category} · {rsvp.user_email}
+                      </p>
+                    </div>
+                    <span className="link-pill">{copy.event_rsvp_approved}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="muted">{copy.event_guest_manager_empty}</p>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+const HostDashboard = () => {
+  const { events, authEmail, firebaseConfigured, subscribeEventRsvps } =
+    useAppContext()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const hostEmail = authEmail?.toLowerCase()
+  const [rsvpMap, setRsvpMap] = useState<Record<string, EventRsvp[]>>({})
+
+  const hostEvents = useMemo(() => {
+    if (!hostEmail) {
+      return []
+    }
+    return events.filter(
+      (event) => event.host_email.toLowerCase() === hostEmail
+    )
+  }, [events, hostEmail])
+
+  useEffect(() => {
+    if (!firebaseConfigured || !hostEvents.length) {
+      setRsvpMap({})
+      return
+    }
+    const unsubscribes = hostEvents
+      .map((event) =>
+        subscribeEventRsvps(event.slug, (rsvps) => {
+          setRsvpMap((prev) => ({ ...prev, [event.slug]: rsvps }))
+        })
+      )
+      .filter(Boolean) as Array<() => void>
+
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe())
+    }
+  }, [firebaseConfigured, hostEvents, subscribeEventRsvps])
+
+  if (!authEmail) {
+    return (
+      <section className="feature">
+        <div className="section-title">
+          <h3>{copy.host_dashboard_title}</h3>
+          <p>{copy.host_dashboard_signin}</p>
+        </div>
+        <Link className="cta" to={`/${lang}/register`}>
+          {copy.request_access}
+        </Link>
+      </section>
+    )
+  }
+
+  if (!hostEvents.length) {
+    return (
+      <section className="feature">
+        <div className="section-title">
+          <h3>{copy.host_dashboard_title}</h3>
+          <p>{copy.host_dashboard_empty}</p>
+        </div>
+        <Link className="ghost" to={`/${lang}/events`}>
+          {copy.event_back}
+        </Link>
+      </section>
+    )
+  }
+
+  return (
+    <section className="feature">
+      <div className="section-title">
+        <h3>{copy.host_dashboard_title}</h3>
+        <p>{copy.host_dashboard_desc}</p>
+      </div>
+      <div className="detail-grid">
+        {hostEvents.map((event) => {
+          const rsvps = rsvpMap[event.slug] ?? []
+          const pending = rsvps.filter((item) => item.status === 'Pending')
+          const approved = rsvps.filter((item) => item.status === 'Approved')
+          return (
+            <div key={event.slug} className="data-card detail-card">
+              <h5>
+                <Link to={`/${lang}/events/${event.slug}`}>{event.title}</Link>
+              </h5>
+              <p className="muted">
+                {event.date} · {event.city}
+              </p>
+              <div className="info-grid">
+                <div>
+                  <p className="info-label">{copy.event_guest_manager_pending}</p>
+                  <p>{pending.length}</p>
+                </div>
+                <div>
+                  <p className="info-label">{copy.event_guest_manager_approved}</p>
+                  <p>{approved.length}</p>
+                </div>
+              </div>
+              {pending.length ? (
+                <div className="link-list">
+                  {pending.slice(0, 3).map((rsvp) => (
+                    <div key={rsvp.id} className="link-row">
+                      <div>
+                        <p className="link-name">{rsvp.user_name}</p>
+                        <p className="muted">{rsvp.category}</p>
+                        {rsvp.trust_badges?.length ? (
+                          <div className="tag-row">
+                            {rsvp.trust_badges.map((badge) => (
+                              <span key={`${rsvp.user_uid}-${badge}`}>{badge}</span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">{copy.event_guest_manager_empty}</p>
+              )}
+            </div>
+          )
+        })}
       </div>
     </section>
   )
@@ -3898,7 +6079,15 @@ function App() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [firestoreReviews, setFirestoreReviews] = useState<Review[]>([])
   const [pendingReviews, setPendingReviews] = useState<Review[]>([])
-  const [constellations] = useState<Constellation[]>([])
+  const [constellations, setConstellations] = useState<Constellation[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [events, setEvents] = useState<Event[]>([])
+  const [relationshipLinks, setRelationshipLinks] = useState<RelationshipLink[]>([])
+  const [linksFromA, setLinksFromA] = useState<RelationshipLink[]>([])
+  const [linksFromB, setLinksFromB] = useState<RelationshipLink[]>([])
+  const [verificationRequests, setVerificationRequests] = useState<
+    VerificationRequest[]
+  >([])
   const [authStatus, setAuthStatus] = useState(copy.en.auth_status_setup)
   const [authUser, setAuthUser] = useState<string | null>(null)
   const [authEmail, setAuthEmail] = useState<string | null>(null)
@@ -3910,6 +6099,7 @@ function App() {
   const authRef = useRef<{ auth: Auth; provider: GoogleAuthProvider } | null>(
     null
   )
+  const appRef = useRef<FirebaseApp | null>(null)
   const firestoreRef = useRef<ReturnType<typeof getFirestore> | null>(null)
 
   const location = useLocation()
@@ -3930,6 +6120,7 @@ function App() {
     }
 
     const app = initializeApp(firebaseConfig)
+    appRef.current = app
     const auth = getAuth(app)
     const provider = new GoogleAuthProvider()
     authRef.current = { auth, provider }
@@ -3954,19 +6145,31 @@ function App() {
 
   useEffect(() => {
     const load = async () => {
-      const [clubsData, websitesData, reviewsData, postsData] = await Promise.all(
-        [
-          loadJson<Club[]>('/data/clubs.json'),
-          loadJson<Website[]>('/data/websites.json'),
-          loadJson<Review[]>('/data/reviews.json'),
-          loadJson<Post[]>('/data/posts.json'),
-        ]
-      )
+      const [
+        clubsData,
+        websitesData,
+        reviewsData,
+        postsData,
+        constellationsData,
+        profilesData,
+        eventsData,
+      ] = await Promise.all([
+        loadJson<Club[]>('/data/clubs.json'),
+        loadJson<Website[]>('/data/websites.json'),
+        loadJson<Review[]>('/data/reviews.json'),
+        loadJson<Post[]>('/data/posts.json'),
+        loadJson<Constellation[]>('/data/constellations.json'),
+        loadJson<Profile[]>('/data/profiles.json'),
+        loadJson<Event[]>('/data/events.json'),
+      ])
 
       setClubs(clubsData ?? [])
       setWebsites(websitesData ?? [])
       setReviews(reviewsData ?? [])
       setPosts(postsData ?? [])
+      setConstellations(constellationsData ?? [])
+      setProfiles(profilesData ?? [])
+      setEvents(eventsData ?? [])
     }
 
     load()
@@ -4038,7 +6241,125 @@ function App() {
     }
   }, [firebaseConfigured, isAdmin])
 
-  useRevealOnScroll([clubs, websites, reviews, posts, location.pathname])
+  useEffect(() => {
+    if (!firebaseConfigured || !firestoreRef.current) {
+      return
+    }
+    if (!isAdmin) {
+      setVerificationRequests([])
+      return
+    }
+    const db = firestoreRef.current
+    const verificationQuery = query(
+      collection(db, 'verification_requests'),
+      where('status', '==', 'pending')
+    )
+    const unsubscribe = onSnapshot(verificationQuery, (snapshot) => {
+      const next = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as Record<string, unknown>
+        const createdAt = data.created_at as { toDate?: () => Date } | undefined
+        return {
+          id: docSnap.id,
+          user_uid: String(data.user_uid || ''),
+          user_name: String(data.user_name || ''),
+          user_email: String(data.user_email || ''),
+          photo_url: String(data.photo_url || ''),
+          phrase: String(data.phrase || ''),
+          status: (data.status as VerificationRequest['status']) || 'pending',
+          created_at: createdAt?.toDate?.()?.toISOString(),
+        } satisfies VerificationRequest
+      })
+      setVerificationRequests(next)
+    })
+
+    return () => unsubscribe()
+  }, [firebaseConfigured, isAdmin])
+
+  useEffect(() => {
+    if (!firebaseConfigured || !appRef.current) {
+      return
+    }
+    const messaging = getMessaging(appRef.current)
+    const unsubscribe = onMessage(messaging, (payload) => {
+      console.info('Push message received', payload)
+    })
+    return () => unsubscribe()
+  }, [firebaseConfigured])
+
+  useEffect(() => {
+    if (!firebaseConfigured || !firestoreRef.current || !authUid) {
+      setLinksFromA([])
+      setLinksFromB([])
+      return
+    }
+    const db = firestoreRef.current
+    const parseLink = (data: Record<string, unknown>, id: string) => ({
+      id,
+      user_a: String(data.user_a || ''),
+      user_b: String(data.user_b || ''),
+      link_type:
+        (data.link_type as RelationshipLink['link_type']) || 'Polycule Member',
+      status: (data.status as RelationshipLink['status']) || 'Pending',
+      merge_visibility: Boolean(data.merge_visibility),
+      user_a_name: typeof data.user_a_name === 'string' ? data.user_a_name : '',
+      user_b_name: typeof data.user_b_name === 'string' ? data.user_b_name : '',
+      user_a_email: typeof data.user_a_email === 'string' ? data.user_a_email : '',
+      user_b_email: typeof data.user_b_email === 'string' ? data.user_b_email : '',
+    })
+
+    const queryA = query(
+      collection(db, 'relationship_links'),
+      where('user_a', '==', authUid)
+    )
+    const queryB = query(
+      collection(db, 'relationship_links'),
+      where('user_b', '==', authUid)
+    )
+
+    const unsubscribeA = onSnapshot(queryA, (snapshot) => {
+      const next = snapshot.docs.map((docSnap) =>
+        parseLink(docSnap.data() as Record<string, unknown>, docSnap.id)
+      )
+      setLinksFromA(next)
+    })
+    const unsubscribeB = onSnapshot(queryB, (snapshot) => {
+      const next = snapshot.docs.map((docSnap) =>
+        parseLink(docSnap.data() as Record<string, unknown>, docSnap.id)
+      )
+      setLinksFromB(next)
+    })
+
+    return () => {
+      unsubscribeA()
+      unsubscribeB()
+    }
+  }, [authUid, firebaseConfigured])
+
+  useEffect(() => {
+    if (!linksFromA.length && !linksFromB.length) {
+      setRelationshipLinks([])
+      return
+    }
+    const merged = new Map<string, RelationshipLink>()
+    ;[...linksFromA, ...linksFromB].forEach((link) => {
+      if (!link.id) {
+        return
+      }
+      merged.set(link.id, link)
+    })
+    setRelationshipLinks(Array.from(merged.values()))
+  }, [linksFromA, linksFromB])
+
+  useRevealOnScroll([
+    clubs,
+    websites,
+    reviews,
+    posts,
+    constellations,
+    profiles,
+    events,
+    location.pathname,
+  ])
 
   const clubNames = useMemo(() => {
     return clubs.reduce<Record<string, string>>((acc, club) => {
@@ -4387,8 +6708,11 @@ function App() {
           displayName: user.displayName || '',
           birthDate: '',
           location: '',
+          locationLat: '',
+          locationLng: '',
           interests: [],
           consentPrivacy: true,
+          photoUrl: '',
         },
       }
     }
@@ -4399,11 +6723,16 @@ function App() {
         displayName: String(data.displayName || user.displayName || ''),
         birthDate: typeof data.birthDate === 'string' ? data.birthDate : '',
         location: typeof data.location === 'string' ? data.location : '',
+        locationLat:
+          typeof data.locationLat === 'number' ? String(data.locationLat) : '',
+        locationLng:
+          typeof data.locationLng === 'number' ? String(data.locationLng) : '',
         interests: Array.isArray(data.interests)
           ? data.interests.map((item) => String(item))
           : [],
         consentPrivacy:
           typeof data.consentPrivacy === 'boolean' ? data.consentPrivacy : true,
+        photoUrl: typeof data.photoUrl === 'string' ? data.photoUrl : '',
       },
     }
   }
@@ -4412,12 +6741,16 @@ function App() {
     displayName,
     birthDate,
     location,
+    locationLat,
+    locationLng,
     interests,
     consentPrivacy,
   }: {
     displayName: string
     birthDate: string
     location: string
+    locationLat: string
+    locationLng: string
     interests: string[]
     consentPrivacy: boolean
   }) => {
@@ -4433,6 +6766,13 @@ function App() {
         await updateProfile(user, { displayName })
         setAuthUser(displayName)
       }
+      const parsedLat = Number.parseFloat(locationLat)
+      const parsedLng = Number.parseFloat(locationLng)
+      const hasCoords =
+        Number.isFinite(parsedLat) &&
+        Number.isFinite(parsedLng) &&
+        Math.abs(parsedLat) <= 90 &&
+        Math.abs(parsedLng) <= 180
       await setDoc(
         doc(firestoreRef.current, 'users', user.uid),
         {
@@ -4440,6 +6780,10 @@ function App() {
           email: user.email || '',
           birthDate,
           location,
+          locationLat: hasCoords ? parsedLat : null,
+          locationLng: hasCoords ? parsedLng : null,
+          locationFuzzyLat: hasCoords ? fuzzCoordinate(parsedLat) : null,
+          locationFuzzyLng: hasCoords ? fuzzCoordinate(parsedLng) : null,
           interests,
           consentPrivacy,
         },
@@ -4455,9 +6799,414 @@ function App() {
     }
   }
 
+  const uploadImage = async (file: File) => {
+    if (!authRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const user = authRef.current.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    try {
+      const token = await user.getIdToken()
+      const formData = new FormData()
+      formData.append('photo', file)
+      const response = await fetch('/api/uploads', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+      if (!response.ok) {
+        return { ok: false, message: languageCopy.photo_upload_error }
+      }
+      const data = (await response.json()) as { url?: string }
+      if (!data.url) {
+        return { ok: false, message: languageCopy.photo_upload_error }
+      }
+      return { ok: true, url: data.url, message: languageCopy.photo_upload_success }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.photo_upload_error
+      return { ok: false, message }
+    }
+  }
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!firestoreRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const user = authRef.current?.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    const upload = await uploadImage(file)
+    if (!upload.ok || !upload.url) {
+      return { ok: false, message: upload.message }
+    }
+    await setDoc(
+      doc(firestoreRef.current, 'users', user.uid),
+      { photoUrl: upload.url },
+      { merge: true }
+    )
+    return { ok: true, url: upload.url, message: languageCopy.photo_upload_success }
+  }
+
+  const handleVerificationSubmit = async (file: File) => {
+    if (!firestoreRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const user = authRef.current?.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    const upload = await uploadImage(file)
+    if (!upload.ok || !upload.url) {
+      return { ok: false, message: languageCopy.verification_status_error }
+    }
+    await addDoc(collection(firestoreRef.current, 'verification_requests'), {
+      user_uid: user.uid,
+      user_name: user.displayName || user.email || 'member',
+      user_email: user.email || '',
+      photo_url: upload.url,
+      phrase: languageCopy.verification_phrase,
+      status: 'pending',
+      created_at: serverTimestamp(),
+    })
+    return { ok: true, message: languageCopy.verification_status_pending }
+  }
+
+  const handleNotificationsEnable = async () => {
+    if (!appRef.current || !firestoreRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    if (typeof Notification === 'undefined') {
+      return { ok: false, message: languageCopy.notifications_error }
+    }
+    if (Notification.permission === 'denied') {
+      return { ok: false, message: languageCopy.notifications_blocked }
+    }
+    if (!('serviceWorker' in navigator)) {
+      return { ok: false, message: languageCopy.notifications_error }
+    }
+    const user = authRef.current?.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined
+    if (!vapidKey) {
+      return { ok: false, message: languageCopy.notifications_missing_key }
+    }
+    const permission = await Notification.requestPermission()
+    if (permission !== 'granted') {
+      return { ok: false, message: languageCopy.notifications_blocked }
+    }
+    try {
+      const registration = await navigator.serviceWorker.register(
+        '/firebase-messaging-sw.js'
+      )
+      const messaging = getMessaging(appRef.current)
+      const token = await getToken(messaging, {
+        vapidKey,
+        serviceWorkerRegistration: registration,
+      })
+      if (!token) {
+        return { ok: false, message: languageCopy.notifications_error }
+      }
+      const userRef = doc(firestoreRef.current, 'users', user.uid)
+      const userDoc = await getDoc(userRef)
+      const existing = userDoc.exists()
+        ? (userDoc.data() as Record<string, unknown>)
+        : {}
+      const tokens = Array.isArray(existing.notificationTokens)
+        ? existing.notificationTokens.map((value) => String(value))
+        : []
+      const nextTokens = Array.from(new Set([...tokens, token]))
+      await setDoc(
+        userRef,
+        { notificationTokens: nextTokens, notificationsEnabled: true },
+        { merge: true }
+      )
+      return { ok: true, message: languageCopy.notifications_enabled, token }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.notifications_error
+      return { ok: false, message }
+    }
+  }
+
+  const handleNotificationsDisable = async () => {
+    if (!appRef.current || !firestoreRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    if (typeof Notification === 'undefined') {
+      return { ok: false, message: languageCopy.notifications_error }
+    }
+    if (!('serviceWorker' in navigator)) {
+      return { ok: false, message: languageCopy.notifications_error }
+    }
+    const user = authRef.current?.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined
+    if (!vapidKey) {
+      return { ok: false, message: languageCopy.notifications_missing_key }
+    }
+    try {
+      const registration = await navigator.serviceWorker.register(
+        '/firebase-messaging-sw.js'
+      )
+      const messaging = getMessaging(appRef.current)
+      const token = await getToken(messaging, {
+        vapidKey,
+        serviceWorkerRegistration: registration,
+      })
+      if (token) {
+        await deleteToken(messaging)
+      }
+      const userRef = doc(firestoreRef.current, 'users', user.uid)
+      const userDoc = await getDoc(userRef)
+      const existing = userDoc.exists()
+        ? (userDoc.data() as Record<string, unknown>)
+        : {}
+      const tokens = Array.isArray(existing.notificationTokens)
+        ? existing.notificationTokens.map((value) => String(value))
+        : []
+      const nextTokens = token ? tokens.filter((item) => item !== token) : tokens
+      await setDoc(
+        userRef,
+        { notificationTokens: nextTokens, notificationsEnabled: false },
+        { merge: true }
+      )
+      return { ok: true, message: languageCopy.notifications_disabled }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.notifications_error
+      return { ok: false, message }
+    }
+  }
+
+  const handleLinkRequest = async ({
+    email,
+    linkType,
+  }: {
+    email: string
+    linkType: RelationshipLink['link_type']
+  }) => {
+    if (!authRef.current || !firestoreRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail) {
+      return { ok: false, message: languageCopy.link_request_status_missing }
+    }
+    const user = authRef.current.auth.currentUser
+    if (!user || !user.email) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    if (trimmedEmail === user.email.toLowerCase()) {
+      return { ok: false, message: languageCopy.link_request_status_self }
+    }
+
+    const db = firestoreRef.current
+    try {
+      const userQuery = query(collection(db, 'users'), where('email', '==', trimmedEmail))
+      const userSnapshot = await getDocs(userQuery)
+      if (userSnapshot.empty) {
+        return { ok: false, message: languageCopy.link_request_status_not_found }
+      }
+      const targetDoc = userSnapshot.docs[0]
+      const targetUid = targetDoc.id
+      if (targetUid === user.uid) {
+        return { ok: false, message: languageCopy.link_request_status_self }
+      }
+      const existingA = await getDocs(
+        query(
+          collection(db, 'relationship_links'),
+          where('user_a', '==', user.uid),
+          where('user_b', '==', targetUid)
+        )
+      )
+      const existingB = await getDocs(
+        query(
+          collection(db, 'relationship_links'),
+          where('user_a', '==', targetUid),
+          where('user_b', '==', user.uid)
+        )
+      )
+      if (!existingA.empty || !existingB.empty) {
+        return { ok: false, message: languageCopy.link_request_status_exists }
+      }
+      const targetData = targetDoc.data() as Record<string, unknown>
+      await addDoc(collection(db, 'relationship_links'), {
+        user_a: user.uid,
+        user_b: targetUid,
+        user_a_name: user.displayName || '',
+        user_b_name: typeof targetData.displayName === 'string' ? targetData.displayName : '',
+        user_a_email: user.email,
+        user_b_email:
+          typeof targetData.email === 'string' ? targetData.email : trimmedEmail,
+        link_type: linkType,
+        status: 'Pending',
+        merge_visibility: false,
+        createdAt: serverTimestamp(),
+      })
+      return { ok: true, message: languageCopy.link_request_status_sent }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.link_request_status_error
+      return { ok: false, message }
+    }
+  }
+
+  const handleLinkResponse = async (
+    linkId: string,
+    status: 'Confirmed' | 'Rejected'
+  ) => {
+    if (!firestoreRef.current || !authUid) {
+      return
+    }
+    await updateDoc(doc(firestoreRef.current, 'relationship_links', linkId), {
+      status,
+      respondedAt: serverTimestamp(),
+      respondedBy: authUid,
+    })
+  }
+
+  const handleLinkVisibility = async (linkId: string, mergeVisibility: boolean) => {
+    if (!firestoreRef.current || !authUid) {
+      return
+    }
+    await updateDoc(doc(firestoreRef.current, 'relationship_links', linkId), {
+      merge_visibility: mergeVisibility,
+      updatedAt: serverTimestamp(),
+      updatedBy: authUid,
+    })
+  }
+
+  const subscribeEventRsvps = (
+    eventSlug: string,
+    onUpdate: (rsvps: EventRsvp[]) => void
+  ) => {
+    if (!firestoreRef.current) {
+      return null
+    }
+    const db = firestoreRef.current
+    const rsvpQuery = query(
+      collection(db, 'event_rsvps'),
+      where('event_slug', '==', eventSlug)
+    )
+    return onSnapshot(rsvpQuery, (snapshot) => {
+      const next = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as Record<string, unknown>
+        const createdAt = data.created_at as { toDate?: () => Date } | undefined
+        return {
+          id: docSnap.id,
+          event_slug: String(data.event_slug || ''),
+          user_uid: String(data.user_uid || ''),
+          user_name: String(data.user_name || ''),
+          user_email: String(data.user_email || ''),
+          category: (data.category as keyof EventCap) || 'couples',
+          status: (data.status as EventRsvp['status']) || 'Pending',
+          trust_badges: Array.isArray(data.trust_badges)
+            ? data.trust_badges.map((badge) => String(badge))
+            : [],
+          checkin_token: typeof data.checkin_token === 'string' ? data.checkin_token : '',
+          created_at: createdAt?.toDate?.()?.toISOString(),
+        } satisfies EventRsvp
+      })
+      onUpdate(next)
+    })
+  }
+
+  const handleEventRsvpSubmit = async (event: Event, category: keyof EventCap) => {
+    if (!authRef.current || !firestoreRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const user = authRef.current.auth.currentUser
+    if (!user || !user.email) {
+      return { ok: false, message: languageCopy.event_rsvp_signed_out }
+    }
+    try {
+      const existing = await getDocs(
+        query(
+          collection(firestoreRef.current, 'event_rsvps'),
+          where('event_slug', '==', event.slug),
+          where('user_uid', '==', user.uid)
+        )
+      )
+      if (!existing.empty) {
+        return { ok: true, message: languageCopy.event_rsvp_pending }
+      }
+      const userDoc = await getDoc(doc(firestoreRef.current, 'users', user.uid))
+      const data = userDoc.exists()
+        ? (userDoc.data() as Record<string, unknown>)
+        : null
+      const trustBadges = data && Array.isArray(data.trustBadges)
+        ? data.trustBadges.map((badge) => String(badge))
+        : []
+      const status = event.privacy_tier === 'Public' ? 'Approved' : 'Pending'
+      await addDoc(collection(firestoreRef.current, 'event_rsvps'), {
+        event_slug: event.slug,
+        user_uid: user.uid,
+        user_name: user.displayName || user.email,
+        user_email: user.email,
+        category,
+        status,
+        trust_badges: trustBadges,
+        checkin_token: generateCheckinToken(),
+        host_email: event.host_email,
+        created_at: serverTimestamp(),
+      })
+      const message =
+        status === 'Approved'
+          ? languageCopy.event_rsvp_approved
+          : languageCopy.event_rsvp_pending
+      return { ok: true, message }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.event_rsvp_error
+      return { ok: false, message }
+    }
+  }
+
+  const handleEventRsvpUpdate = async (
+    rsvpId: string,
+    status: 'Approved' | 'Declined'
+  ) => {
+    if (!firestoreRef.current) {
+      return
+    }
+    await updateDoc(doc(firestoreRef.current, 'event_rsvps', rsvpId), {
+      status,
+      reviewed_at: serverTimestamp(),
+      reviewed_by: authEmail || '',
+    })
+  }
+
   const allReviews = useMemo(
     () => [...reviews, ...firestoreReviews],
     [reviews, firestoreReviews]
+  )
+
+  const pendingLinkRequests = useMemo(
+    () =>
+      relationshipLinks.filter(
+        (link) => link.status === 'Pending' && link.user_b === authUid
+      ),
+    [relationshipLinks, authUid]
   )
 
   const handleReviewModeration = async (
@@ -4474,12 +7223,34 @@ function App() {
     })
   }
 
+  const handleVerificationModeration = async (
+    requestId: string,
+    status: 'approved' | 'rejected'
+  ) => {
+    if (!firestoreRef.current || !authEmail) {
+      return
+    }
+    await updateDoc(
+      doc(firestoreRef.current, 'verification_requests', requestId),
+      {
+        status,
+        reviewedAt: serverTimestamp(),
+        reviewedBy: authEmail,
+      }
+    )
+  }
+
   const context: AppContext = {
     clubs,
     websites,
     posts,
     reviews: allReviews,
     constellations,
+    profiles,
+    events,
+    relationshipLinks,
+    pendingLinkRequests,
+    verificationRequests,
     clubNames,
     authStatus,
     authUser,
@@ -4502,6 +7273,17 @@ function App() {
     firebaseConfigured,
     handleProfileLoad,
     handleProfileUpdate,
+    handlePhotoUpload,
+    handleNotificationsEnable,
+    handleNotificationsDisable,
+    handleVerificationSubmit,
+    handleVerificationModeration,
+    handleLinkRequest,
+    handleLinkResponse,
+    handleLinkVisibility,
+    subscribeEventRsvps,
+    handleEventRsvpSubmit,
+    handleEventRsvpUpdate,
   }
 
   return (
@@ -4512,9 +7294,14 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="clubs" element={<ClubsPage />} />
           <Route path="clubs/:slug" element={<ClubDetail />} />
+          <Route path="events/host" element={<HostDashboard />} />
+          <Route path="events" element={<EventsPage />} />
+          <Route path="events/:slug" element={<EventDetail />} />
           <Route path="cities/:citySlug" element={<CityPage />} />
           <Route path="map" element={<MapPage />} />
+          <Route path="blog" element={<BlogPage />} />
           <Route path="register" element={<RegisterPage />} />
+          <Route path="profiles/:slug" element={<PublicProfilePage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="guidelines" element={<GuidelinesPage />} />
           <Route path="admin" element={<AdminPage />} />

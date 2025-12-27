@@ -9,14 +9,23 @@
     "build:ci": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "server": "node server/index.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.1.0",
     "firebase": "^10.12.2",
+    "firebase-admin": "^13.5.0",
     "leaflet": "^1.9.4",
+    "multer": "^2.0.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.11.0"
+    "react-router-dom": "^7.11.0",
+    "sharp": "^0.34.5",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "vite-plugin-pwa": "^1.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

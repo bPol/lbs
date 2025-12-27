@@ -1,0 +1,57 @@
+[
+  {
+    "slug": "lena-ross",
+    "display_name": "Lena Ross",
+    "location": "Lisbon, Portugal",
+    "summary": "Connector, event host, and logistics mind for the circle.",
+    "interests": ["Consent culture", "Travel nights", "Community dinners"],
+    "badges": ["Attended 5+ parties", "Host verified"],
+    "photo_url": "/assets/profile-lena.svg",
+    "lat": 38.7223,
+    "lng": -9.1393
+  },
+  {
+    "slug": "mira-vale",
+    "display_name": "Mira Vale",
+    "location": "Lisbon, Portugal",
+    "summary": "Creative director who curates themes and soft openings.",
+    "interests": ["Art salons", "Playful aesthetics", "Slow dances"],
+    "badges": ["Attended 3+ parties"],
+    "photo_url": "/assets/profile-mira.svg",
+    "lat": 38.7223,
+    "lng": -9.1393
+  },
+  {
+    "slug": "jonah-park",
+    "display_name": "Jonah Park",
+    "location": "Porto, Portugal",
+    "summary": "Planner for trips and shared calendars across the group.",
+    "interests": ["Beach weekends", "Scheduling rituals", "Wellness"],
+    "badges": ["Community mentor"],
+    "photo_url": "/assets/profile-jonah.svg",
+    "lat": 41.1579,
+    "lng": -8.6291
+  },
+  {
+    "slug": "sloan-ivy",
+    "display_name": "Sloan Ivy",
+    "location": "Sintra, Portugal",
+    "summary": "Keeps the circle grounded with safety check-ins and care.",
+    "interests": ["Aftercare", "Boundaries", "Soft landing spaces"],
+    "badges": ["Safety lead"],
+    "photo_url": "/assets/profile-sloan.svg",
+    "lat": 38.8029,
+    "lng": -9.3817
+  },
+  {
+    "slug": "cass-ward",
+    "display_name": "Cass Ward",
+    "location": "Lisbon, Portugal",
+    "summary": "New to the circle, exploring with intention.",
+    "interests": ["Meetups", "New cities", "Photography"],
+    "badges": ["New member"],
+    "photo_url": "/assets/profile-cass.svg",
+    "lat": 38.7223,
+    "lng": -9.1393
+  }
+]

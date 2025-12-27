@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Harborlight Circle",
+    "slug": "harborlight-circle",
+    "city": "Lisbon",
+    "members": [
+      "lena-ross",
+      "mira-vale",
+      "jonah-park",
+      "sloan-ivy",
+      "cass-ward"
+    ],
+    "links": [
+      {
+        "user_a": "lena-ross",
+        "user_b": "mira-vale",
+        "link_type": "Primary",
+        "status": "Confirmed"
+      },
+      {
+        "user_a": "lena-ross",
+        "user_b": "jonah-park",
+        "link_type": "Polycule Member",
+        "status": "Confirmed"
+      },
+      {
+        "user_a": "mira-vale",
+        "user_b": "jonah-park",
+        "link_type": "Play Partner",
+        "status": "Confirmed"
+      },
+      {
+        "user_a": "mira-vale",
+        "user_b": "sloan-ivy",
+        "link_type": "Polycule Member",
+        "status": "Confirmed"
+      },
+      {
+        "user_a": "jonah-park",
+        "user_b": "sloan-ivy",
+        "link_type": "Polycule Member",
+        "status": "Confirmed"
+      },
+      {
+        "user_a": "lena-ross",
+        "user_b": "cass-ward",
+        "link_type": "Play Partner",
+        "status": "Pending"
+      }
+    ]
+  }
+]
