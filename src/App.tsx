@@ -114,6 +114,7 @@ type AppContext = {
     displayName: string
     email: string
     password: string
+    birthDate: string
     location: string
     interests: string[]
     consentAge: boolean
@@ -183,6 +184,20 @@ const getLangFromPath = (pathname: string): Lang => {
   return SUPPORTED_LANGS.includes(segment) ? segment : 'en'
 }
 
+const isAdult = (birthDate: string) => {
+  const birth = new Date(birthDate)
+  if (Number.isNaN(birth.getTime())) {
+    return false
+  }
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age -= 1
+  }
+  return age >= 18
+}
+
 const copy = {
   en: {
     site_tagline: 'Modern communities mapped like constellations.',
@@ -226,12 +241,14 @@ const copy = {
     label_email: 'Email',
     label_password: 'Password',
     label_confirm_password: 'Confirm password',
+    label_birth_date: 'Birth date',
     label_location: 'Location',
     label_interests: 'Interests',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
     placeholder_password: '8+ characters',
     placeholder_confirm_password: 'Re-enter password',
+    placeholder_birth_date: 'YYYY-MM-DD',
     placeholder_location: 'City, Country',
     placeholder_interests: 'Open relationships, Voyeur, BDSM',
     interest_tag_1: 'Open relationships',
@@ -254,6 +271,7 @@ const copy = {
     auth_sign_in_success: 'Signed in.',
     auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Passwords do not match.',
+    register_underage: 'You must be 18 or older.',
     register_status_success: 'Account created. Pending review before publishing.',
     register_status_permission:
       'Account created, but profile storage is blocked by Firestore rules.',
@@ -500,12 +518,14 @@ const copy = {
     label_email: 'Email',
     label_password: 'Hasło',
     label_confirm_password: 'Potwierdź hasło',
+    label_birth_date: 'Data urodzenia',
     label_location: 'Lokalizacja',
     label_interests: 'Zainteresowania',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
     placeholder_password: '8+ znaków',
     placeholder_confirm_password: 'Wpisz ponownie hasło',
+    placeholder_birth_date: 'RRRR-MM-DD',
     placeholder_location: 'Miasto, kraj',
     placeholder_interests: 'Relacje otwarte, Voyeur, BDSM',
     interest_tag_1: 'Relacje otwarte',
@@ -528,6 +548,7 @@ const copy = {
     auth_sign_in_success: 'Signed in.',
     auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Hasła nie są zgodne.',
+    register_underage: 'Musisz mieć co najmniej 18 lat.',
     register_status_success: 'Konto utworzone. Oczekuje na weryfikację.',
     register_status_permission:
       'Konto utworzone, ale zapis profilu zablokowany przez reguły Firestore.',
@@ -771,12 +792,14 @@ const copy = {
     label_email: 'Email',
     label_password: 'Mot de passe',
     label_confirm_password: 'Confirmer le mot de passe',
+    label_birth_date: 'Date de naissance',
     label_location: 'Localisation',
     label_interests: 'Intérêts',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
     placeholder_password: '8+ caractères',
     placeholder_confirm_password: 'Ressaisir le mot de passe',
+    placeholder_birth_date: 'AAAA-MM-JJ',
     placeholder_location: 'Ville, pays',
     placeholder_interests: 'Relations ouvertes, Voyeur, BDSM',
     interest_tag_1: 'Relations ouvertes',
@@ -799,6 +822,7 @@ const copy = {
     auth_sign_in_success: 'Signed in.',
     auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Les mots de passe ne correspondent pas.',
+    register_underage: 'Vous devez avoir au moins 18 ans.',
     register_status_success: 'Compte créé. En attente de validation.',
     register_status_permission:
       'Compte créé, mais stockage bloqué par les règles Firestore.',
@@ -1042,12 +1066,14 @@ const copy = {
     label_email: 'E-Mail',
     label_password: 'Passwort',
     label_confirm_password: 'Passwort bestätigen',
+    label_birth_date: 'Geburtsdatum',
     label_location: 'Ort',
     label_interests: 'Interessen',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
     placeholder_password: '8+ Zeichen',
     placeholder_confirm_password: 'Passwort erneut',
+    placeholder_birth_date: 'JJJJ-MM-TT',
     placeholder_location: 'Stadt, Land',
     placeholder_interests: 'Offene Beziehungen, Voyeur, BDSM',
     interest_tag_1: 'Offene Beziehungen',
@@ -1070,6 +1096,7 @@ const copy = {
     auth_sign_in_success: 'Signed in.',
     auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Passwörter stimmen nicht überein.',
+    register_underage: 'Du musst mindestens 18 Jahre alt sein.',
     register_status_success: 'Konto erstellt. Prüfung ausstehend.',
     register_status_permission:
       'Konto erstellt, aber Profilspeicherung durch Firestore blockiert.',
@@ -1313,12 +1340,14 @@ const copy = {
     label_email: 'Email',
     label_password: 'Password',
     label_confirm_password: 'Conferma password',
+    label_birth_date: 'Data di nascita',
     label_location: 'Località',
     label_interests: 'Interessi',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
     placeholder_password: '8+ caratteri',
     placeholder_confirm_password: 'Reinserisci la password',
+    placeholder_birth_date: 'AAAA-MM-GG',
     placeholder_location: 'Città, Paese',
     placeholder_interests: 'Relazioni aperte, Voyeur, BDSM',
     interest_tag_1: 'Relazioni aperte',
@@ -1341,6 +1370,7 @@ const copy = {
     auth_sign_in_success: 'Signed in.',
     auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Le password non corrispondono.',
+    register_underage: 'Devi avere almeno 18 anni.',
     register_status_success: 'Account creato. In attesa di revisione.',
     register_status_permission:
       'Account creato, ma il profilo è bloccato dalle regole Firestore.',
@@ -1584,12 +1614,14 @@ const copy = {
     label_email: 'Email',
     label_password: 'Contraseña',
     label_confirm_password: 'Confirmar contraseña',
+    label_birth_date: 'Fecha de nacimiento',
     label_location: 'Ubicación',
     label_interests: 'Intereses',
     placeholder_display_name: 'VelvetAtlas',
     placeholder_email: 'name@email.com',
     placeholder_password: '8+ caracteres',
     placeholder_confirm_password: 'Repite la contraseña',
+    placeholder_birth_date: 'AAAA-MM-DD',
     placeholder_location: 'Ciudad, país',
     placeholder_interests: 'Relaciones abiertas, Voyeur, BDSM',
     interest_tag_1: 'Relaciones abiertas',
@@ -1612,6 +1644,7 @@ const copy = {
     auth_sign_in_success: 'Signed in.',
     auth_sign_in_error: 'Unable to sign in. Please try again.',
     register_password_mismatch: 'Las contraseñas no coinciden.',
+    register_underage: 'Debes tener al menos 18 años.',
     register_status_success: 'Cuenta creada. Pendiente de revisión.',
     register_status_permission:
       'Cuenta creada, pero el perfil está bloqueado por reglas Firestore.',
@@ -2331,6 +2364,7 @@ const RegisterPage = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    birthDate: '',
     location: '',
     interests: '',
     consentAge: false,
@@ -2350,10 +2384,14 @@ const RegisterPage = () => {
     if (registerForm.password !== registerForm.confirmPassword) {
       return
     }
+    if (!registerForm.birthDate || !isAdult(registerForm.birthDate)) {
+      return
+    }
     await handleRegister({
       displayName: registerForm.displayName.trim(),
       email: registerForm.email.trim(),
       password: registerForm.password,
+      birthDate: registerForm.birthDate,
       location: registerForm.location.trim(),
       interests: registerForm.interests
         .split(',')
@@ -2369,15 +2407,19 @@ const RegisterPage = () => {
     registerForm.password.length > 0 &&
     registerForm.confirmPassword.length > 0 &&
     registerForm.password !== registerForm.confirmPassword
+  const underage =
+    registerForm.birthDate.length > 0 && !isAdult(registerForm.birthDate)
   const canSubmit =
     firebaseConfigured &&
     registerForm.displayName.trim().length > 0 &&
     registerForm.email.trim().length > 0 &&
     registerForm.password.length >= 8 &&
     registerForm.confirmPassword.length >= 8 &&
+    registerForm.birthDate.length > 0 &&
     registerForm.consentAge &&
     registerForm.consentPolicy &&
     !passwordMismatch &&
+    !underage &&
     !registerLoading
 
   return (
@@ -2458,6 +2500,22 @@ const RegisterPage = () => {
                 }
                 required
                 minLength={8}
+              />
+            </label>
+            <label className="register-field">
+              {copy.label_birth_date}
+              <input
+                className="register-input"
+                type="date"
+                placeholder={copy.placeholder_birth_date}
+                value={registerForm.birthDate}
+                onChange={(event) =>
+                  setRegisterForm((prev) => ({
+                    ...prev,
+                    birthDate: event.target.value,
+                  }))
+                }
+                required
               />
             </label>
             <label className="register-field register-span">
@@ -2559,6 +2617,11 @@ const RegisterPage = () => {
               {passwordMismatch ? (
                 <span className="register-status register-status--error">
                   {copy.register_password_mismatch}
+                </span>
+              ) : null}
+              {underage ? (
+                <span className="register-status register-status--error">
+                  {copy.register_underage}
                 </span>
               ) : null}
               {registerStatus ? (
@@ -3397,6 +3460,7 @@ function App() {
     displayName,
     email,
     password,
+    birthDate,
     location,
     interests,
     consentAge,
@@ -3406,6 +3470,7 @@ function App() {
     displayName: string
     email: string
     password: string
+    birthDate: string
     location: string
     interests: string[]
     consentAge: boolean
@@ -3427,6 +3492,7 @@ function App() {
       await setDoc(doc(firestoreRef.current, 'users', credential.user.uid), {
         displayName,
         email,
+        birthDate,
         location,
         interests,
         consentAge,
