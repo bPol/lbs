@@ -767,9 +767,9 @@ const copy: CopyMap = {
       'LedBySwing łączy ludzi, konstelacje i kluby, dając miejsce na historie, recenzje i dzienniki podróży.',
     hero_paragraph:
       'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_title: 'Twoje relacje są wyjątkowe. Twoja platforma też powinna.',
     relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
+      'Tradycyjne serwisy kończą na „Single” lub „Para”. My idziemy dalej. Od zarządzania złożonymi polycules po prywatne wydarzenia — LedBySwing radzi sobie z piękną złożonością etycznej niemonogamii. Sprowadź swoją konstelację do domu.',
     hero_cta_primary: 'Uruchom konstelację',
     hero_cta_secondary: 'Poznaj sieć',
     metric_label: 'Aktywni użytkownicy',
@@ -1317,9 +1317,9 @@ const copy: CopyMap = {
       'LedBySwing réunit personnes, constellations et clubs pour partager histoires, avis et carnets de voyage.',
     hero_paragraph:
       'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_title: 'Vos relations sont uniques. Votre plateforme aussi.',
     relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
+      'Les sites classiques s’arrêtent à « Single » ou « Couple ». Nous allons plus loin. De la gestion de polycules complexes aux événements privés, LedBySwing est conçu pour la belle complexité de la non‑monogamie éthique. Ramenez votre constellation à la maison.',
     hero_cta_primary: 'Lancer une constellation',
     hero_cta_secondary: 'Explorer le graphe',
     metric_label: 'Utilisateurs actifs',
@@ -1867,9 +1867,9 @@ const copy: CopyMap = {
       'LedBySwing verbindet Menschen, Konstellationen und Clubs für Stories, Reviews und Reisetagebücher.',
     hero_paragraph:
       'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_title: 'Deine Beziehungen sind einzigartig. Deine Plattform sollte es auch sein.',
     relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
+      'Klassische Seiten enden bei „Single“ oder „Paar“. Wir gehen weiter. Von komplexen Polycules bis zu privaten Events ist LedBySwing für die schöne Komplexität ethischer Nicht‑Monogamie gebaut. Hol deine Konstellation nach Hause.',
     hero_cta_primary: 'Konstellation starten',
     hero_cta_secondary: 'Netz erkunden',
     metric_label: 'Aktive Nutzer',
@@ -2418,9 +2418,9 @@ const copy: CopyMap = {
       'LedBySwing unisce persone, costellazioni e club per storie, recensioni e diari di viaggio.',
     hero_paragraph:
       'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_title: 'Le tue relazioni sono uniche. Anche la tua piattaforma dovrebbe esserlo.',
     relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
+      'I siti tradizionali si fermano a “Single” o “Coppia”. Noi andiamo oltre. Dalla gestione di polycule complesse agli eventi privati, LedBySwing è progettato per la splendida complessità della non‑monogamia etica. Porta la tua costellazione a casa.',
     hero_cta_primary: 'Lancia una costellazione',
     hero_cta_secondary: 'Esplora il grafo',
     metric_label: 'Utenti attivi',
@@ -2968,9 +2968,9 @@ const copy: CopyMap = {
       'LedBySwing conecta personas, constelaciones y clubes para historias, reseñas y diarios de viaje.',
     hero_paragraph:
       'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
+    relationships_title: 'Tus relaciones son únicas. Tu plataforma también debería serlo.',
     relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
+      'Los sitios tradicionales se quedan en “Single” o “Pareja”. Nosotros vamos más allá. Desde gestionar polycules complejas hasta eventos privados, LedBySwing está diseñado para la hermosa complejidad de la no monogamia ética. Trae tu constelación a casa.',
     hero_cta_primary: 'Lanzar una constelación',
     hero_cta_secondary: 'Explorar la red',
     metric_label: 'Usuarios activos',
