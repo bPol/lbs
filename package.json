@@ -9,6 +9,7 @@
     "build:ci": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs",
     "seed:blog": "node scripts/seed-blog-posts.mjs",
     "server": "node server/index.mjs",
     "test:e2e": "playwright test"

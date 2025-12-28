@@ -139,12 +139,63 @@ const revealSafetyMedia = (event: MouseEvent<HTMLElement>) => {
 const JsonLd = ({ data }: { data: Record<string, unknown> }) => (
   <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
 )
+
+const SITE_BASE_URL = 'https://ledbyswing.com'
+const OG_IMAGE_PATH = '/assets/og-card.png'
+const LOGO_PATH = '/assets/logo.png'
+
+const upsertMetaTag = (attrs: { name?: string; property?: string; content: string }) => {
+  const selector = attrs.name
+    ? `meta[name="${attrs.name}"]`
+    : `meta[property="${attrs.property}"]`
+  const head = document.head
+  let tag = head.querySelector(selector) as HTMLMetaElement | null
+  if (!tag) {
+    tag = document.createElement('meta')
+    if (attrs.name) {
+      tag.setAttribute('name', attrs.name)
+    }
+    if (attrs.property) {
+      tag.setAttribute('property', attrs.property)
+    }
+    head.appendChild(tag)
+  }
+  tag.setAttribute('content', attrs.content)
+}
+
+const upsertLinkTag = (attrs: Record<string, string>) => {
+  const selectorParts: string[] = []
+  if (attrs.rel) {
+    selectorParts.push(`rel="${attrs.rel}"`)
+  }
+  if (attrs.hreflang) {
+    selectorParts.push(`hreflang="${attrs.hreflang}"`)
+  }
+  const selector = selectorParts.length
+    ? `link[${selectorParts.join('][')}]`
+    : 'link'
+  const head = document.head
+  let tag = head.querySelector(selector) as HTMLLinkElement | null
+  if (!tag) {
+    tag = document.createElement('link')
+    head.appendChild(tag)
+  }
+  Object.entries(attrs).forEach(([key, value]) => {
+    tag?.setAttribute(key, value)
+  })
+}
 const getLocalizedText = (value: LocalizedText | string, lang: Lang) => {
   if (typeof value === 'string') {
     return value
   }
   return value[lang] ?? value.en ?? ''
 }
+
+const fillTemplate = (template: string, values: Record<string, string>) =>
+  Object.entries(values).reduce(
+    (result, [key, value]) => result.replace(`{${key}}`, value),
+    template
+  )
 
 const coerceLocalizedText = (value: unknown): LocalizedText | string => {
   if (typeof value === 'string') {
@@ -651,7 +702,17 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
   const [ageConfirmed, setAgeConfirmed] = useState(!SPLASH_SCREEN_ENABLED)
   const [ageGateReady, setAgeGateReady] = useState(!SPLASH_SCREEN_ENABLED)
   const copy = getCopy(lang)
-  const { isAdmin, authUser, handleAuthClick, safetyMode, setSafetyMode } = context
+  const {
+    isAdmin,
+    authUser,
+    handleAuthClick,
+    safetyMode,
+    setSafetyMode,
+    clubs,
+    events,
+    posts,
+    profiles,
+  } = context
   const registerState = {
     from: `${location.pathname}${location.search}${location.hash}`,
   }
@@ -709,20 +770,164 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
   const isActivePath = (path: string) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`)
 
-  const siteUrl =
-    typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : ''
+  const siteBase = SITE_BASE_URL
   const organizationSchema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'LedBySwing',
-    url: siteUrl || undefined,
+    url: siteBase,
+    logo: `${siteBase}${LOGO_PATH}`,
+    sameAs: ['https://twitter.com/ledbyswing'],
   }
+  const softwareSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'LedBySwing',
+    url: siteBase,
+    applicationCategory: 'SocialNetworkingApplication',
+    operatingSystem: 'Web, iOS, Android',
+    offers: {
+      '@type': 'Offer',
+      price: '0.00',
+      priceCurrency: 'USD',
+    },
+  }
+
+  const pageMeta = useMemo(() => {
+    const segments = location.pathname.split('/').filter(Boolean)
+    const page = segments[1] || ''
+    const slug = segments[2] || ''
+    if (!page) {
+      return { title: copy.seo_default_title, description: copy.seo_default_description }
+    }
+    if (page === 'events') {
+      if (slug === 'host') {
+        return {
+          title: copy.seo_events_host_title,
+          description: copy.seo_default_description,
+        }
+      }
+      if (slug) {
+        const event = events.find((item) => item.slug === slug)
+        const eventTitle = event?.title || copy.seo_event_fallback
+        return {
+          title: fillTemplate(copy.seo_event_detail_title, { event: eventTitle }),
+          description: copy.seo_default_description,
+        }
+      }
+      return {
+        title: copy.seo_events_title,
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'cities' && slug) {
+      const cityName = formatCityName(slug)
+      return {
+        title: fillTemplate(copy.seo_city_events_title, { city: cityName }),
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'clubs') {
+      if (slug) {
+        const club = clubs.find((item) => item.slug === slug)
+        const clubTitle = club?.name || copy.seo_club_fallback
+        return {
+          title: fillTemplate(copy.seo_club_detail_title, { club: clubTitle }),
+          description: copy.seo_default_description,
+        }
+      }
+      return {
+        title: copy.seo_clubs_title,
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'blog') {
+      if (slug) {
+        const post = posts.find((item) => item.slug === slug)
+        const postTitle = post
+          ? getLocalizedText(post.title, lang)
+          : copy.seo_blog_fallback
+        return {
+          title: fillTemplate(copy.seo_blog_post_title, { post: postTitle }),
+          description: copy.seo_default_description,
+        }
+      }
+      return {
+        title: copy.seo_blog_title,
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'profiles' && slug) {
+      const profile = profiles.find((item) => item.slug === slug)
+      const profileTitle = profile?.display_name || copy.seo_profile_fallback
+      return {
+        title: fillTemplate(copy.seo_profile_title, { profile: profileTitle }),
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'map') {
+      return {
+        title: copy.seo_map_title,
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'register') {
+      return {
+        title: copy.seo_register_title,
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'profile') {
+      return {
+        title: copy.seo_profile_settings_title,
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'messages') {
+      return {
+        title: copy.seo_messages_title,
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'guidelines') {
+      return {
+        title: copy.seo_guidelines_title,
+        description: copy.seo_default_description,
+      }
+    }
+    if (page === 'admin') {
+      return {
+        title: copy.seo_admin_title,
+        description: copy.seo_default_description,
+      }
+    }
+    return { title: copy.seo_default_title, description: copy.seo_default_description }
+  }, [location.pathname, clubs, copy, events, lang, posts, profiles])
+
+  useEffect(() => {
+    const canonicalUrl = `${siteBase}${location.pathname}`
+    document.title = pageMeta.title
+    document.documentElement.lang = lang
+    upsertMetaTag({ name: 'description', content: pageMeta.description })
+    upsertMetaTag({ property: 'og:title', content: pageMeta.title })
+    upsertMetaTag({ property: 'og:description', content: pageMeta.description })
+    upsertMetaTag({ property: 'og:type', content: 'website' })
+    upsertMetaTag({ property: 'og:url', content: canonicalUrl })
+    upsertMetaTag({ property: 'og:image', content: `${siteBase}${OG_IMAGE_PATH}` })
+    upsertMetaTag({ property: 'og:image:alt', content: copy.seo_og_alt })
+    upsertMetaTag({ name: 'twitter:card', content: 'summary_large_image' })
+    upsertMetaTag({ name: 'twitter:title', content: pageMeta.title })
+    upsertMetaTag({ name: 'twitter:description', content: pageMeta.description })
+    upsertMetaTag({ name: 'twitter:image', content: `${siteBase}${OG_IMAGE_PATH}` })
+    upsertLinkTag({ rel: 'canonical', href: canonicalUrl })
+    upsertLinkTag({ rel: 'alternate', hreflang: 'en', href: `${siteBase}/en` })
+    upsertLinkTag({ rel: 'alternate', hreflang: 'x-default', href: `${siteBase}/en` })
+  }, [copy.seo_og_alt, lang, location.pathname, pageMeta.description, pageMeta.title, siteBase])
 
   return (
     <div>
       <JsonLd data={organizationSchema} />
+      <JsonLd data={softwareSchema} />
       {SPLASH_SCREEN_ENABLED && !ageConfirmed && ageGateReady ? (
         <div className="age-gate" role="dialog" aria-modal="true">
           <div className="age-gate-card">
@@ -780,7 +985,7 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
             </div>
           </div>
           <div>
-            <h1>{copy.site_tagline}</h1>
+            <p className="site-tagline">{copy.site_tagline}</p>
           </div>
         </Link>
         <nav className="nav">
@@ -855,6 +1060,15 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
           <h3>LedBySwing</h3>
           <p>{copy.footer_tagline}</p>
         </div>
+        <div className="footer-links">
+          <h4>{copy.footer_popular_title}</h4>
+          <div className="footer-link-list">
+            <Link to={`/${lang}`}>{copy.footer_popular_link1}</Link>
+            <Link to={`/${lang}#constellations`}>{copy.footer_popular_link2}</Link>
+            <Link to={`/${lang}`}>{copy.footer_popular_link3}</Link>
+            <Link to={`/${lang}/events`}>{copy.footer_popular_link4}</Link>
+          </div>
+        </div>
         <div className="footer-actions">
           <Link className="ghost" to={`/${lang}/guidelines`}>
             {copy.footer_guidelines}
@@ -913,12 +1127,40 @@ const HomePage = () => {
     return sorted.slice(0, 10)
   }, [clubs])
   const previewClubs = useMemo(() => clubs.slice(0, 6), [clubs])
+  const faqItems = [
+    {
+      question: copy.faq_q1,
+      answer: copy.faq_a1,
+    },
+    {
+      question: copy.faq_q2,
+      answer: copy.faq_a2,
+    },
+    {
+      question: copy.faq_q3,
+      answer: copy.faq_a3,
+    },
+  ]
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqItems.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
+  }
 
   return (
     <>
+      <JsonLd data={faqSchema} />
       <section className="hero">
         <div className="hero-copy">
           <p className="pill">{copy.hero_pill}</p>
+          <h1>{copy.home_h1}</h1>
           <h2>{copy.hero_title}</h2>
           <p className="lead">
             {copy.hero_lead}
@@ -1121,6 +1363,21 @@ const HomePage = () => {
           ) : (
             <p className="muted">{copy.blog_loading}</p>
           )}
+        </div>
+      </section>
+
+      <section className="faq">
+        <div className="section-title">
+          <h3>{copy.faq_title}</h3>
+          <p>{copy.faq_desc}</p>
+        </div>
+        <div className="faq-grid">
+          {faqItems.map((item) => (
+            <article key={item.question} className="faq-card reveal">
+              <h4>{item.question}</h4>
+              <p>{item.answer}</p>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -2207,6 +2464,7 @@ const ProfilePage = () => {
                 src={photoPreviewUrl || profilePhotoUrl}
                 alt={profileForm.displayName}
                 className="user-media"
+                loading="lazy"
                 onClick={revealSafetyMedia}
               />
             ) : (
@@ -2510,6 +2768,7 @@ const PublicProfilePage = () => {
                 src={profile.photo_url}
                 alt={profile.display_name}
                 className="user-media"
+                loading="lazy"
                 onClick={revealSafetyMedia}
               />
             ) : (
@@ -3152,6 +3411,7 @@ const AdminVerificationPage = () => {
                     className="admin-photo user-media"
                     src={request.photo_url}
                     alt={request.user_name}
+                    loading="lazy"
                     onClick={revealSafetyMedia}
                   />
                 ) : null}
@@ -3286,6 +3546,13 @@ const ClubsPage = () => {
   const [clubSummary, setClubSummary] = useState('')
   const [clubStatus, setClubStatus] = useState('')
   const [clubLoading, setClubLoading] = useState(false)
+  const comingSoonClubs = [
+    copy.clubs_coming_soon_item1,
+    copy.clubs_coming_soon_item2,
+    copy.clubs_coming_soon_item3,
+    copy.clubs_coming_soon_item4,
+    copy.clubs_coming_soon_item5,
+  ]
 
   const canSubmitClub =
     firebaseConfigured && authUser && clubName.trim().length > 1 && !clubLoading
@@ -3322,6 +3589,14 @@ const ClubsPage = () => {
       <div className="section-title">
         <h3>{copy.clubs_page_title}</h3>
         <p>{copy.clubs_page_desc}</p>
+      </div>
+      <div className="coming-soon">
+        <h4>{copy.clubs_coming_soon_title}</h4>
+        <ul>
+          {comingSoonClubs.map((club) => (
+            <li key={club}>{club}</li>
+          ))}
+        </ul>
       </div>
       <div className="club-grid">
         {clubs.map((club) => (
@@ -3492,13 +3767,6 @@ const CityEventsPage = ({ citySlug }: { citySlug?: string }) => {
     [events, slug]
   )
 
-  useEffect(() => {
-    if (!cityName) {
-      return
-    }
-    document.title = copy.city_events_title.replace('{city}', cityName)
-  }, [cityName, copy.city_events_title])
-
   return (
     <section className="feature">
       <div className="section-title">
@@ -3555,10 +3823,7 @@ const EventDetail = () => {
   >([])
   const [chatText, setChatText] = useState('')
   const socketRef = useRef<Socket | null>(null)
-  const siteUrl =
-    typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
-      : ''
+  const siteBase = SITE_BASE_URL
   const eventSchema = useMemo(() => {
     if (!event) {
       return null
@@ -3568,9 +3833,10 @@ const EventDetail = () => {
         ? undefined
         : {
             '@type': 'Place',
-            name: event.city,
+            name: event.address || event.city,
             address: {
               '@type': 'PostalAddress',
+              streetAddress: event.address,
               addressLocality: event.city,
             },
           }
@@ -3579,10 +3845,15 @@ const EventDetail = () => {
       '@type': 'Event',
       name: event.title,
       startDate: event.date,
-      url: siteUrl ? `${siteUrl}/${lang}/events/${event.slug}` : undefined,
+      description: event.summary,
+      url: `${siteBase}/${lang}/events/${event.slug}`,
       location: locationData,
+      organizer: {
+        '@type': 'Person',
+        name: event.host_name,
+      },
     }
-  }, [event, lang, siteUrl])
+  }, [event, lang, siteBase])
 
   useEffect(() => {
     if (!event || !firebaseConfigured) {
@@ -4256,6 +4527,26 @@ const CityPage = () => {
             <p className="muted">{copy.city_constellations_empty}</p>
           )}
         </div>
+      </div>
+    </section>
+  )
+}
+
+const NotFoundPage = () => {
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+
+  return (
+    <section className="feature">
+      <div className="section-title">
+        <h3>{copy.not_found_title}</h3>
+        <p>
+          {copy.not_found_body}{' '}
+          <Link to={`/${lang}`}>{copy.not_found_home}</Link>{' '}
+          {copy.not_found_body_connector}{' '}
+          <Link to={`/${lang}/events`}>{copy.not_found_events}</Link>.
+        </p>
       </div>
     </section>
   )
@@ -6008,6 +6299,7 @@ function App() {
             <Route path="verification" element={<AdminVerificationPage />} />
             <Route path="events" element={<AdminEventsPage />} />
           </Route>
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       ))}
       <Route path="*" element={<Navigate to="/en" replace />} />
