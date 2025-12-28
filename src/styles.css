@@ -1022,6 +1022,16 @@ main {
   box-shadow: 0 16px 34px var(--shadow);
 }
 
+.review-panel--cta {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.review-panel__content {
+  display: grid;
+  gap: 8px;
+}
+
 .review-panel--split {
   grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
   align-items: start;
@@ -1367,6 +1377,14 @@ main {
 @media (max-width: 900px) {
   .review-panel--split {
     grid-template-columns: 1fr;
+  }
+
+  .review-panel--cta {
+    grid-template-columns: 1fr;
+  }
+
+  .review-panel--cta .cta {
+    justify-self: stretch;
   }
 
   .register-panel {

@@ -1002,13 +1002,6 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
           {isAdmin ? (
             <Link to={`/${lang}/admin`}>{copy.nav_admin}</Link>
           ) : null}
-          <button
-            className="ghost"
-            type="button"
-            onClick={() => setSafetyMode(!safetyMode)}
-          >
-            {safetyMode ? copy.safety_mode_disable : copy.safety_mode_enable}
-          </button>
           <select
             className="lang-select"
             value={langValue}
@@ -1174,7 +1167,6 @@ const HomePage = () => {
             >
               {copy.hero_cta_primary}
             </Link>
-            <button className="ghost">{copy.hero_cta_secondary}</button>
           </div>
         </div>
         <div className="hero-visual">
@@ -2993,7 +2985,7 @@ const AdminOverview = () => {
                   <p className="muted">
                     {copy.review_rating_label} {review.rating}/5
                   </p>
-                  <p className="admin-text">{review.text}</p>
+                  <p className="admin-text">{getLocalizedText(review.text, lang)}</p>
                 </div>
               </div>
             ))}
@@ -3031,7 +3023,7 @@ const AdminReviewsPage = () => {
                   {clubNames[review.club_slug] || review.club_slug} ·{' '}
                   {copy.review_rating_label} {review.rating}/5
                 </p>
-                <p className="admin-text">{review.text}</p>
+                <p className="admin-text">{getLocalizedText(review.text, lang)}</p>
               </div>
               <div className="admin-actions">
                 <button
@@ -3683,12 +3675,14 @@ const ClubsPage = () => {
           </form>
         </div>
       ) : (
-        <div className="review-panel">
-          <div className="section-title">
-            <h3>{copy.club_submit_title}</h3>
-            <p>{copy.club_submit_desc}</p>
+        <div className="review-panel review-panel--cta">
+          <div className="review-panel__content">
+            <div className="section-title">
+              <h3>{copy.club_submit_title}</h3>
+              <p>{copy.club_submit_desc}</p>
+            </div>
+            <p className="muted">{copy.club_submit_signin_required}</p>
           </div>
-          <p className="muted">{copy.club_submit_signin_required}</p>
           <Link className="cta" to={`/${lang}/register`} state={registerState}>
             {copy.request_access}
           </Link>
@@ -4598,7 +4592,7 @@ const ClubDetail = () => {
           bestRating: '5',
           worstRating: '1',
         },
-        reviewBody: review.text.replace(/\s+/g, ' ').trim(),
+        reviewBody: getLocalizedText(review.text, lang).replace(/\s+/g, ' ').trim(),
         itemReviewed: {
           '@type': 'LocalBusiness',
           name: club.name,
@@ -4756,7 +4750,8 @@ const ClubDetail = () => {
                     ? review.author_slug.replace(/-/g, ' ')
                     : copy.review_author_anonymous
                   const statusLabel = getStatusLabel(review.status, copy)
-                  const paragraphs = review.text.split('\n\n')
+                  const reviewText = getLocalizedText(review.text, lang)
+                  const paragraphs = reviewText.split('\n\n')
                   return (
                     <div key={`${review.club_slug}-${review.author_slug}`}>
                       <div className="review-header">

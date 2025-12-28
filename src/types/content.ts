@@ -48,7 +48,7 @@ export type Review = {
   author_slug: string
   rating: number
   status: string
-  text: string
+  text: LocalizedText | string
   date?: string
   country?: string
   country_code?: string
