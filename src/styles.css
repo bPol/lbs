@@ -39,6 +39,127 @@ body {
   overflow-x: hidden;
 }
 
+.age-gate {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 14, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 60;
+}
+
+.age-gate-card {
+  width: min(520px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px;
+  text-align: center;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+}
+
+.age-gate-card h2 {
+  font-size: 1.6rem;
+  margin: 12px 0 10px;
+}
+
+.age-gate-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.safety-mode .user-media {
+  filter: blur(15px);
+  transition: filter 0.2s ease;
+}
+
+.safety-mode .user-media:hover,
+.safety-mode .user-media:focus,
+.safety-mode .user-media--reveal {
+  filter: none;
+}
+
+.onboarding-card {
+  margin-bottom: 24px;
+}
+
+.onboarding-progress {
+  position: relative;
+  height: 8px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 12px 0 16px;
+}
+
+.onboarding-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(120deg, var(--logo-primary), var(--logo-secondary));
+}
+
+.onboarding-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.onboarding-step {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.onboarding-step--done {
+  color: var(--ink);
+  background: rgba(157, 80, 187, 0.2);
+}
+
+.mobile-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px 16px 18px;
+  background: rgba(15, 15, 18, 0.95);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  z-index: 40;
+}
+
+.mobile-nav a {
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+.mobile-nav a.active {
+  color: var(--ink);
+}
+
+.mobile-nav-create {
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: linear-gradient(120deg, var(--logo-primary), var(--logo-secondary));
+  color: #fff;
+  font-weight: 600;
+}
+
+.mobile-nav-create:hover {
+  color: #fff;
+}
+
 .ambient {
   position: fixed;
   inset: -20vh -10vw auto -10vw;
@@ -62,6 +183,24 @@ body {
   background: rgba(15, 15, 18, 0.9);
   backdrop-filter: blur(12px);
   z-index: 10;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 88px;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .site-header {
+    position: static;
+  }
+
+  .mobile-nav {
+    display: flex;
+  }
 }
 
 .brand {
@@ -550,6 +689,55 @@ main {
   gap: 12px;
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.post-detail {
+  gap: 12px;
+}
+
+.post-body {
+  background: var(--surface);
+  padding: 28px;
+  border-radius: 26px;
+  box-shadow: 0 16px 32px var(--shadow);
+  display: grid;
+  gap: 16px;
+}
+
+.post-body h1,
+.post-body h2,
+.post-body h3 {
+  margin-top: 10px;
+}
+
+.post-body p {
+  color: var(--ink);
+}
+
+.post-body ul {
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+}
+
+.post-body a {
+  color: var(--accent-soft);
+}
+
+.post-body pre {
+  background: var(--surface-2);
+  padding: 16px;
+  border-radius: 16px;
+  overflow-x: auto;
+}
+
+.post-body code {
+  font-family: "IBM Plex Mono", "Space Grotesk", monospace;
+}
+
+.text-link {
+  color: var(--accent-soft);
+  text-decoration: underline;
 }
 
 .site-footer {
@@ -1393,6 +1581,28 @@ main {
   box-shadow: 0 14px 28px var(--shadow);
   display: grid;
   gap: 16px;
+}
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-nav a {
+  text-decoration: none;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.admin-nav a.active {
+  color: var(--ink);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(157, 80, 187, 0.35);
 }
 
 .admin-panel-header h4 {

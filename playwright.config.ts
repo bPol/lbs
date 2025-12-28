@@ -6,7 +6,7 @@ export default defineConfig({
   retries: 0,
   use: {
     browserName: 'firefox',
-    baseURL: 'http://localhost:5174',
+    baseURL: 'http://localhost:7007',
     trace: 'on-first-retry',
   },
 })

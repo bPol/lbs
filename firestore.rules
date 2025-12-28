@@ -13,8 +13,18 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function pairKey(userA, userB) {
+      return userA < userB ? (userA + '_' + userB) : (userB + '_' + userA);
+    }
+
+    function isAdult(birthDate) {
+      return birthDate is timestamp &&
+        request.time.toMillis() - birthDate.toMillis() >= 567648000000;
+    }
+
     match /users/{userId} {
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        isAdult(request.resource.data.birthDateTimestamp);
       allow read, update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
     }
@@ -42,7 +52,12 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
         request.resource.data.user_a == request.auth.uid &&
         request.resource.data.user_a != request.resource.data.user_b &&
-        request.resource.data.status == 'Pending';
+        request.resource.data.status == 'Pending' &&
+        request.resource.data.pair_key == pairKey(
+          request.resource.data.user_a,
+          request.resource.data.user_b
+        ) &&
+        linkId == request.resource.data.pair_key;
       allow update: if isSignedIn() &&
         (resource.data.user_a == request.auth.uid ||
           resource.data.user_b == request.auth.uid);
@@ -71,6 +86,11 @@ service cloud.firestore {
         request.resource.data.status == 'pending';
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    match /blog_posts/{postId} {
+      allow read: if resource.data.status == 'published' || isAdmin();
+      allow create, update, delete: if isAdmin();
     }
   }
 }

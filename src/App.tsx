@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import {
   Link,
   Navigate,
@@ -10,20 +10,18 @@ import {
   useOutletContext,
   useParams,
 } from 'react-router-dom'
-import { initializeApp, type FirebaseApp } from 'firebase/app'
+import { type FirebaseApp } from 'firebase/app'
 import {
-  GoogleAuthProvider,
   createUserWithEmailAndPassword,
-  getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   updateProfile,
   type Auth,
+  type GoogleAuthProvider,
 } from 'firebase/auth'
 import {
-  getFirestore,
   serverTimestamp,
   setDoc,
   doc,
@@ -33,6 +31,7 @@ import {
   collection,
   onSnapshot,
   query,
+  Timestamp,
   updateDoc,
   where,
 } from 'firebase/firestore'
@@ -43,271 +42,21 @@ import {
   onMessage,
 } from 'firebase/messaging'
 import { io, type Socket } from 'socket.io-client'
+import {
+  forceCenter,
+  forceCollide,
+  forceLink,
+  forceManyBody,
+  forceSimulation,
+} from 'd3-force'
 import L from 'leaflet'
-
-const firebaseConfig = {
-  apiKey: 'AIzaSyCCIsslSCpOwkHhvFfK41noNkplEcw0pfk',
-  authDomain: 'ledbyswing.firebaseapp.com',
-  projectId: 'ledbyswing',
-  storageBucket: 'ledbyswing.firebasestorage.app',
-  messagingSenderId: '68542676788',
-  appId: '1:68542676788:web:a3f793148639c8f006ef61',
-}
-
-type LocalizedText = Record<string, string>
-
-type Club = {
-  name: string
-  slug: string
-  city?: string
-  country?: string
-  country_code?: string
-  map_x?: number
-  map_y?: number
-  lat?: number
-  lng?: number
-  summary: LocalizedText | string
-}
-
-type Website = {
-  name: string
-  url: string
-  type: LocalizedText | string
-  status: LocalizedText | string
-  summary: LocalizedText | string
-}
-
-type Post = {
-  title: LocalizedText | string
-  date: LocalizedText | string
-  excerpt: LocalizedText | string
-  meta: [LocalizedText | string, LocalizedText | string]
-  url: LocalizedText | string
-}
-
-type Constellation = {
-  name: string
-  slug: string
-  city?: string
-  members?: string[]
-  links?: RelationshipLink[]
-}
-
-type RelationshipLink = {
-  id?: string
-  user_a: string
-  user_b: string
-  link_type: 'Primary' | 'Play Partner' | 'Polycule Member'
-  status: 'Pending' | 'Confirmed' | 'Rejected'
-  merge_visibility?: boolean
-  user_a_name?: string
-  user_b_name?: string
-  user_a_email?: string
-  user_b_email?: string
-}
-
-type Profile = {
-  slug: string
-  display_name: string
-  location?: string
-  lat?: number
-  lng?: number
-  summary?: string
-  interests?: string[]
-  badges?: string[]
-  photo_url?: string
-}
-
-type EventPrivacyTier = 'Public' | 'Vetted' | 'Private'
-
-type EventCap = {
-  men: number
-  women: number
-  couples: number
-}
-
-type Event = {
-  title: string
-  slug: string
-  date: string
-  city: string
-  privacy_tier: EventPrivacyTier
-  address?: string
-  lat?: number
-  lng?: number
-  host_name: string
-  host_email: string
-  cap: EventCap
-  summary: string
-  invited_emails?: string[]
-}
-
-type EventRsvp = {
-  id?: string
-  event_slug: string
-  user_uid: string
-  user_name: string
-  user_email: string
-  category: keyof EventCap
-  status: 'Pending' | 'Approved' | 'Declined'
-  trust_badges?: string[]
-  checkin_token?: string
-  created_at?: string
-}
-
-type LiveStatusKey = 'open' | 'full' | 'last_call'
-
-type VerificationRequest = {
-  id?: string
-  user_uid: string
-  user_name: string
-  user_email: string
-  photo_url: string
-  phrase: string
-  status: 'pending' | 'approved' | 'rejected'
-  created_at?: string
-}
-
-type Review = {
-  id?: string
-  club_slug: string
-  author_type: 'user' | 'constellation'
-  author_slug: string
-  rating: number
-  status: string
-  text: string
-  date?: string
-  country?: string
-  country_code?: string
-  city?: string
-  date_visited?: string
-  dress_code?: string
-  website?: string
-  party_type?: string
-  day_of_week?: string
-  ratings?: Record<string, number>
-}
-
-type AppContext = {
-  clubs: Club[]
-  websites: Website[]
-  posts: Post[]
-  reviews: Review[]
-  constellations: Constellation[]
-  profiles: Profile[]
-  events: Event[]
-  relationshipLinks: RelationshipLink[]
-  pendingLinkRequests: RelationshipLink[]
-  verificationRequests: VerificationRequest[]
-  clubNames: Record<string, string>
-  authStatus: string
-  authUser: string | null
-  authEmail: string | null
-  authUid: string | null
-  handleAuthClick: () => Promise<void>
-  handleEmailSignIn: (details: { email: string; password: string }) => Promise<void>
-  handleGoogleRegisterStart: () => Promise<{
-    ok: boolean
-    message?: string
-    user?: { displayName: string; email: string }
-    birthDate?: string
-  }>
-  handleRegister: (details: {
-    displayName: string
-    email: string
-    password: string
-    birthDate: string
-    location: string
-    interests: string[]
-    consentAge: boolean
-    consentPrivacy: boolean
-    consentPolicy: boolean
-  }) => Promise<void>
-  handleGoogleRegister: (details: {
-    displayName: string
-    email: string
-    birthDate: string
-    location: string
-    interests: string[]
-    consentAge: boolean
-    consentPrivacy: boolean
-    consentPolicy: boolean
-  }) => Promise<void>
-  registerStatus: string
-  signInStatus: string
-  registerLoading: boolean
-  signInLoading: boolean
-  handleReviewSubmit: (details: {
-    club: Club
-    rating: number
-    text: string
-    anonymous?: boolean
-  }) => Promise<{ ok: boolean; message: string }>
-  handleClubSubmit: (details: {
-    name: string
-    city: string
-    country: string
-    website: string
-    summary: string
-  }) => Promise<{ ok: boolean; message: string }>
-  handleReviewModeration: (reviewId: string, status: 'approved' | 'rejected') => Promise<void>
-  pendingReviews: Review[]
-  pendingEventRsvps: EventRsvp[]
-  isAdmin: boolean
-  firebaseConfigured: boolean
-  handleProfileLoad: () => Promise<{
-    ok: boolean
-    message?: string
-    data?: {
-      displayName?: string
-      birthDate?: string
-      location?: string
-      locationLat?: string
-      locationLng?: string
-      interests?: string[]
-      consentPrivacy?: boolean
-      photoUrl?: string
-    }
-  }>
-  handleProfileUpdate: (details: {
-    displayName: string
-    birthDate: string
-    location: string
-    locationLat: string
-    locationLng: string
-    interests: string[]
-    consentPrivacy: boolean
-  }) => Promise<{ ok: boolean; message: string }>
-  handleLinkRequest: (details: {
-    email: string
-    linkType: RelationshipLink['link_type']
-  }) => Promise<{ ok: boolean; message: string }>
-  handleLinkResponse: (
-    linkId: string,
-    status: 'Confirmed' | 'Rejected'
-  ) => Promise<void>
-  handleLinkVisibility: (linkId: string, mergeVisibility: boolean) => Promise<void>
-  subscribeEventRsvps: (
-    eventSlug: string,
-    onUpdate: (rsvps: EventRsvp[]) => void
-  ) => (() => void) | null
-  handleEventRsvpSubmit: (
-    event: Event,
-    category: keyof EventCap
-  ) => Promise<{ ok: boolean; message: string }>
-  handleEventRsvpUpdate: (
-    rsvpId: string,
-    status: 'Approved' | 'Declined'
-  ) => Promise<void>
-  handlePhotoUpload: (file: File) => Promise<{ ok: boolean; url?: string; message: string }>
-  handleNotificationsEnable: () => Promise<{ ok: boolean; message: string; token?: string }>
-  handleNotificationsDisable: () => Promise<{ ok: boolean; message: string }>
-  handleVerificationSubmit: (file: File) => Promise<{ ok: boolean; message: string }>
-  handleVerificationModeration: (
-    requestId: string,
-    status: 'approved' | 'rejected'
-  ) => Promise<void>
-}
+import { getCopy, getLangFromPath, SUPPORTED_LANGS, copy, type Lang } from './i18n/copy'
+import { initFirebase, isFirebaseConfigured } from './services/firebase'
+import type { AppContext } from './types/context'
+import type { Club, LocalizedText, ModerationPost, Post, Review, Website } from './types/content'
+import type { Event, EventCap, EventRsvp, LiveStatusKey } from './types/events'
+import type { Profile, VerificationRequest } from './types/profile'
+import type { Constellation, RelationshipLink } from './types/relationships'
 
 const loadJson = async <T,>(path: string): Promise<T | null> => {
   try {
@@ -367,14 +116,6 @@ const useRevealOnScroll = (deps: unknown[]) => {
   }, deps)
 }
 
-const SUPPORTED_LANGS = ['en', 'pl', 'fr', 'de', 'it', 'es'] as const
-type Lang = (typeof SUPPORTED_LANGS)[number]
-
-const getLangFromPath = (pathname: string): Lang => {
-  const segment = pathname.split('/')[1] as Lang
-  return SUPPORTED_LANGS.includes(segment) ? segment : 'en'
-}
-
 const isAdult = (birthDate: string) => {
   const birth = new Date(birthDate)
   if (Number.isNaN(birth.getTime())) {
@@ -389,2510 +130,15 @@ const isAdult = (birthDate: string) => {
   return age >= 18
 }
 
-const copy = {
-  en: {
-    site_tagline: 'Modern communities mapped like constellations.',
-    nav_users: 'Users',
-    nav_constellations: 'Constellations',
-    nav_clubs: 'Clubs',
-    nav_events: 'Events',
-    nav_map: 'Map',
-    nav_websites: 'Websites',
-    nav_blog: 'Blog',
-    nav_join: 'Join',
-    nav_review: 'Review',
-    nav_admin: 'Admin',
-    user_menu_label: 'Account',
-    user_menu_edit: 'Edit profile',
-    user_menu_host: 'Host dashboard',
-    user_menu_signout: 'Sign out',
-    profile_page_title: 'Your profile',
-    profile_page_subtitle: 'Update your details and privacy settings.',
-    profile_save: 'Save changes',
-    profile_saving: 'Saving...',
-    profile_saved: 'Profile updated.',
-    profile_save_error: 'Unable to update profile. Please try again.',
-    profile_signin_prompt: 'Sign in to edit your profile.',
-    request_access: 'Request Access',
-    link_section_title: 'Constellation links',
-    link_section_subtitle:
-      'Send requests, confirm consent, and choose how you appear together.',
-    link_request_email_label: 'Request by email',
-    link_request_email_placeholder: 'partner@email.com',
-    link_request_type_label: 'Link type',
-    link_request_send: 'Send request',
-    link_request_sending: 'Sending...',
-    link_request_status_sent: 'Link request sent.',
-    link_request_status_missing: 'Enter an email to send a request.',
-    link_request_status_self: 'You cannot link to your own email.',
-    link_request_status_not_found: 'No user found with that email.',
-    link_request_status_exists: 'A link request already exists.',
-    link_request_status_error: 'Unable to send request. Please try again.',
-    link_requests_incoming_title: 'Incoming requests',
-    link_requests_outgoing_title: 'Outgoing requests',
-    link_requests_confirmed_title: 'Confirmed links',
-    link_requests_empty: 'None yet.',
-    link_request_accept: 'Accept',
-    link_request_decline: 'Decline',
-    link_request_merge_label: 'Merge search visibility',
-    link_request_merge_on: 'Merged',
-    link_request_merge_off: 'Independent',
-    photo_upload_label: 'Profile photo',
-    photo_upload_button: 'Upload',
-    photo_upload_success: 'Photo updated.',
-    photo_upload_error: 'Unable to upload photo.',
-    notifications_title: 'Notifications',
-    notifications_desc: 'Enable push notifications for invites and updates.',
-    notifications_enable: 'Enable notifications',
-    notifications_disable: 'Disable notifications',
-    notifications_enabled: 'Notifications enabled.',
-    notifications_disabled: 'Notifications disabled.',
-    notifications_blocked: 'Notifications are blocked in your browser settings.',
-    notifications_missing_key: 'Missing VAPID key for notifications.',
-    notifications_error: 'Unable to update notifications.',
-    verification_title: 'Photo verification',
-    verification_desc: 'Upload a selfie holding the verification phrase.',
-    verification_phrase_label: 'Verification phrase',
-    verification_phrase: 'LBS2025',
-    verification_upload_label: 'Verification photo',
-    verification_submit: 'Submit verification',
-    verification_submitting: 'Submitting...',
-    verification_status_pending: 'Verification submitted for review.',
-    verification_status_success: 'Verification updated.',
-    verification_status_error: 'Unable to submit verification.',
-    verification_admin_title: 'Photo verification',
-    verification_admin_desc: 'Review submitted selfie verifications.',
-    verification_admin_empty: 'No verification requests.',
-    verification_admin_approve: 'Approve',
-    verification_admin_reject: 'Reject',
-    events_page_title: 'Parties & Events',
-    events_page_desc: 'See upcoming events, RSVP caps, and host vetting status.',
-    event_privacy_label: 'Privacy tier',
-    event_privacy_public: 'Public',
-    event_privacy_vetted: 'Vetted',
-    event_privacy_private: 'Private',
-    event_privacy_notice_public: 'Visible to all. Address is shared.',
-    event_privacy_notice_vetted:
-      'Visible to all. Address shared after host approval.',
-    event_privacy_notice_private: 'Invite-only. Hidden from public listings.',
-    event_address_label: 'Location',
-    event_address_hidden: 'Address hidden until approval.',
-    event_cap_label: 'Guest cap',
-    event_cap_men: 'Men',
-    event_cap_women: 'Women',
-    event_cap_couples: 'Couples',
-    event_rsvp_title: 'RSVP',
-    event_rsvp_desc: 'Pick a category to request a spot.',
-    event_rsvp_category_label: 'Category',
-    event_rsvp_submit: 'Send RSVP',
-    event_rsvp_sending: 'Sending...',
-    event_rsvp_full: 'This category is full.',
-    event_rsvp_pending: 'RSVP pending host approval.',
-    event_rsvp_approved: 'RSVP approved.',
-    event_rsvp_declined: 'RSVP declined.',
-    event_rsvp_error: 'Unable to send RSVP.',
-    event_rsvp_signed_out: 'Sign in to RSVP.',
-    event_rsvp_qr_title: 'Check-in QR',
-    event_rsvp_qr_desc: 'Show this code at the door for entry.',
-    event_guest_manager_title: 'Guest Manager',
-    event_guest_manager_desc: 'Review RSVPs and trust badges.',
-    event_guest_manager_pending: 'Pending requests',
-    event_guest_manager_approved: 'Approved guests',
-    event_guest_manager_empty: 'No RSVPs yet.',
-    event_guest_action_approve: 'Approve',
-    event_guest_action_decline: 'Decline',
-    event_not_found_title: 'Event not found',
-    event_not_found_body: 'We could not find this event.',
-    event_back: 'Back to events',
-    event_live_status_label: 'Live status',
-    event_live_status_open: 'Open',
-    event_live_status_full: 'Full',
-    event_live_status_last_call: 'Last call',
-    event_live_update: 'Update status',
-    event_live_chat_title: 'Live chat',
-    event_live_chat_placeholder: 'Type a message...',
-    event_live_chat_send: 'Send',
-    host_dashboard_title: 'Host dashboard',
-    host_dashboard_desc: 'Track RSVPs across your hosted events.',
-    host_dashboard_empty: 'No hosted events yet.',
-    host_dashboard_signin: 'Sign in to view host tools.',
-    footer_tagline: 'Community home for users, constellations, clubs, and stories.',
-    footer_guidelines: 'Guidelines & Terms',
-    lang_select_label: 'Select language',
-    hero_pill: 'Built for creators, clubs, and shared stories',
-    hero_title: 'Shape a living network of people, clubs, and unforgettable nights.',
-    hero_lead:
-      'LedBySwing brings together people, constellations, and clubs with room to share stories, reviews, and travel diaries.',
-    hero_paragraph:
-      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
-    relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
-    hero_cta_primary: 'Launch a constellation',
-    hero_cta_secondary: 'Explore the graph',
-    metric_label: 'Active users',
-    metric_caption: 'Growing in 12 regions',
-    register_page_title: 'Create your account',
-    register_page_subtitle:
-      'This creates a single-person account. Couples or constellations can be added later.',
-    auth_title: 'Create your account',
-    auth_subtitle:
-      'Profiles unlock reviews, private event calendars, and invitations from constellations.',
-    register_kicker: 'Private community access',
-    register_heading: 'Build a profile with intention.',
-    register_body:
-      'Every account is reviewed. You can browse anonymously, but reviews and invitations require a verified profile.',
-    label_display_name: 'Display name',
-    label_email: 'Email',
-    label_password: 'Password',
-    label_confirm_password: 'Confirm password',
-    label_birth_date: 'Birth date',
-    label_location: 'Location',
-    label_location_lat: 'Location latitude',
-    label_location_lng: 'Location longitude',
-    label_interests: 'Interests',
-    placeholder_display_name: 'VelvetAtlas',
-    placeholder_email: 'name@email.com',
-    placeholder_password: '8+ characters',
-    placeholder_confirm_password: 'Re-enter password',
-    placeholder_birth_date: 'YYYY-MM-DD',
-    placeholder_location: 'City, Country',
-    placeholder_location_lat: '41.38',
-    placeholder_location_lng: '2.17',
-    placeholder_interests: 'Open relationships, Voyeur, BDSM',
-    interest_tag_1: 'Open relationships',
-    interest_tag_2: 'Voyeur',
-    interest_tag_3: 'BDSM',
-    interest_tag_4: 'Social events',
-    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
-    consent_privacy: 'Keep my profile private until I choose to publish.',
-    consent_policy_prefix: 'I have read and agree to the ',
-    consent_policy_link: 'Terms of Service and Community Guidelines',
-    consent_policy_suffix: '.',
-    register_create: 'Create account',
-    register_creating: 'Creating account...',
-    register_google_cta: 'Create account with Google',
-    register_google_hint: "Use Google to skip password setup. We'll prefill your email.",
-    auth_sign_in_google: 'Sign in with Google',
-    auth_sign_out: 'Sign out',
-    auth_status_setup: 'Sign-in setup required',
-    auth_status_config: 'Sign-in configuration required',
-    auth_status_pending: 'New accounts are reviewed before launch',
-    auth_sign_in_missing: 'Enter your email and password to sign in.',
-    auth_sign_in_success: 'Signed in.',
-    auth_sign_in_error: 'Unable to sign in. Please try again.',
-    register_password_mismatch: 'Passwords do not match.',
-    register_underage: 'You must be 18 or older.',
-    register_status_success: 'Account created. Pending review before publishing.',
-    register_status_permission:
-      'Account created, but profile storage is blocked by Firestore rules.',
-    register_status_error: 'Unable to create account. Please try again.',
-    register_expect_label: 'Expect',
-    register_expect_text: 'Thoughtful moderation and verified profiles.',
-    register_privacy_label: 'Privacy',
-    register_privacy_text: 'Choose what to show before you publish.',
-    register_trust_label: 'Trust',
-    register_trust_text: 'Reviews are tied to real profiles only.',
-    register_have_account: 'Already have an account?',
-    register_sign_in: 'Sign in',
-    guidelines_page_title: 'Guidelines & Terms',
-    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
-    terms_title: 'Terms of Service (The Legal Guardrails)',
-    terms_eligibility_title: 'Eligibility & Age Verification',
-    terms_eligibility_item_1:
-      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
-    terms_eligibility_item_2:
-      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
-    terms_content_title: 'Content Ownership & License',
-    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
-    terms_content_item_2:
-      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
-    terms_content_item_3:
-      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
-    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
-    terms_prohibited_item_1:
-      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
-    terms_prohibited_item_2:
-      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
-    terms_liability_title: 'Limitation of Liability',
-    terms_liability_item_1:
-      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
-    terms_liability_item_2:
-      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
-    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
-    guidelines_core_title: 'The C.O.R.E. Principles',
-    guidelines_core_item_1:
-      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
-    guidelines_core_item_2:
-      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
-    guidelines_core_item_3:
-      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
-    guidelines_core_item_4:
-      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
-    guidelines_constellation_title: 'Constellation Etiquette',
-    guidelines_constellation_item_1:
-      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
-    guidelines_constellation_item_2:
-      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
-    guidelines_event_title: 'Event Safety',
-    guidelines_event_item_1:
-      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
-    guidelines_event_item_2:
-      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
-    users_title: 'The Living Network',
-    users_subtitle: 'Explore identities and shared histories that power every connection.',
-    users_card_profiles_title: 'Dynamic Profiles',
-    users_card_profiles_body: 'Express your true self with flexible roles and deep interests.',
-    users_card_profiles_item1: 'Multi-identity tagging',
-    users_card_profiles_item2: 'Real-time availability',
-    users_card_profiles_item3: 'Intertwined interests',
-    users_card_trust_title: 'Vouched Trust',
-    users_card_trust_body: 'Safety is built through community, not algorithms.',
-    users_card_trust_item1: 'Peer-to-peer vouches',
-    users_card_trust_item2: 'Verified event history',
-    users_card_trust_item3: 'Community standing',
-    users_card_privacy_title: 'Granular Discretion',
-    users_card_privacy_body: 'Total control over how you appear to the world.',
-    users_card_privacy_item1: 'Selective club visibility',
-    users_card_privacy_item2: 'Hidden activity logs',
-    users_card_privacy_item3: 'Stealth mode',
-    const_title: 'Constellations',
-    const_subtitle:
-      'Each constellation is a curated set of two or more users with shared intent.',
-    const_card_title: 'Collaborative clusters',
-    const_card_body:
-      'Build constellations for mentorship, co-creation, or launches. Each member adds shared goals and momentum.',
-    const_tag1: '2+ users required',
-    const_tag2: 'Shared mission',
-    const_tag3: 'Time-bounded',
-    clubs_title: 'Clubs',
-    clubs_subtitle:
-      'Independent spaces that host events, publish posts, and seed new constellations.',
-    clubs_card1_title: 'Membership arcs',
-    clubs_card1_body: 'Tiered access for guests, members, and ambassadors with custom onboarding.',
-    clubs_card1_item1: 'Invite-only entries',
-    clubs_card1_item2: 'Event check-ins',
-    clubs_card1_item3: 'Retention heatmaps',
-    clubs_card2_title: 'Club spaces',
-    clubs_card2_body: 'Dedicated websites for clubs with calendars, galleries, and resident posts.',
-    clubs_card2_item1: 'Multi-admin control',
-    clubs_card2_item2: 'Theme presets',
-    clubs_card2_item3: 'Quick publishing',
-    clubs_card3_title: 'Shared growth',
-    clubs_card3_body: 'See which constellations and stories grow from each club cohort.',
-    clubs_card3_item1: 'Story attribution',
-    clubs_card3_item2: 'Club connections',
-    clubs_card3_item3: 'Growth cohorts',
-    clubs_highlights_title: 'Club highlights',
-    clubs_highlights_body: 'Featured clubs to start exploring.',
-    clubs_loading: 'Loading...',
-    map_title: 'Europe club map',
-    map_desc: 'See where the community meets across Europe.',
-    map_aria: 'OpenStreetMap of Europe',
-    map_pin_open: 'Open {name}',
-    websites_title: 'Websites',
-    websites_desc: 'Launch branded sites with profiles, club hubs, and public stories.',
-    websites_card1_title: 'Pages that feel alive',
-    websites_card1_body: 'Highlight schedules, teams, and constellations in a single flow.',
-    websites_card1_item1: 'Adaptive templates',
-    websites_card1_item2: 'Multi-language copy',
-    websites_card1_item3: 'Search-friendly copy',
-    websites_card2_title: 'Visibility',
-    websites_card2_body: 'Showcase clubs and keep stories discoverable.',
-    websites_card2_item1: 'Shared calendars',
-    websites_card2_item2: 'Story archives',
-    websites_card2_item3: 'Community highlights',
-    websites_card3_title: 'Stewardship',
-    websites_card3_body: 'Keep approvals and publishing aligned across teams.',
-    websites_card3_item1: 'Editorial flows',
-    websites_card3_item2: 'Member roles',
-    websites_card3_item3: 'Edit history',
-    website_visit: 'Visit website',
-    blog_title: 'Blog posts',
-    blog_desc: 'Storytelling tied to users, constellations, and travel memories.',
-    blog_loading: 'Loading posts from legacy archive...',
-    moderation_title: 'Review queue',
-    moderation_desc: 'New profiles, comments, and blog posts wait for review before going live.',
-    moderation_pending_label: 'Pending reviews',
-    moderation_pending_desc: 'Approve or reject reviews before they appear publicly.',
-    moderation_queue_label: 'Queue',
-    moderation_queue_empty: 'No reviews in the queue.',
-    moderation_admin_only_title: 'Admins only',
-    moderation_admin_only_desc: 'Sign in with an admin account to review submissions.',
-    moderation_open_admin: 'Open admin panel',
-    admin_title: 'Admin panel',
-    admin_subtitle: 'Moderate reviews, keep profiles safe, and publish with confidence.',
-    admin_access_denied_title: 'Access denied',
-    admin_access_denied_body: 'You need an admin account to access this panel.',
-    admin_back_home: 'Back to home',
-    admin_pending_title: 'Pending reviews',
-    admin_pending_desc: 'Reviews waiting for approval or rejection.',
-    admin_approved_title: 'Approved reviews',
-    admin_approved_desc: 'Recently published reviews from the community.',
-    admin_queue_title: 'Moderation queue',
-    admin_action_approve: 'Approve',
-    admin_action_reject: 'Reject',
-    admin_no_pending: 'No pending reviews.',
-    admin_recent_title: 'Recently approved',
-    admin_recent_empty: 'No approved reviews yet.',
-    admin_events_title: 'Event moderation',
-    admin_events_desc: 'Review pending RSVPs across all events.',
-    admin_events_empty: 'No pending event RSVPs.',
-    clubs_page_title: 'Clubs',
-    clubs_page_desc:
-      'Browse every club, then open a detail page for reviews and stories.',
-    club_submit_title: 'Submit a club',
-    club_submit_desc: 'Know a club we should add? Send the details for review.',
-    club_submit_name_label: 'Club name',
-    club_submit_city_label: 'City',
-    club_submit_country_label: 'Country',
-    club_submit_website_label: 'Website',
-    club_submit_summary_label: 'Short description',
-    club_submit_summary_placeholder: 'Share what makes this club special...',
-    club_submit_submit: 'Submit club',
-    club_submit_submitting: 'Submitting...',
-    club_submit_signin_required: 'Sign in to submit a club.',
-    club_submit_status_pending: 'Club submitted for moderation.',
-    club_submit_status_error: 'Unable to submit club. Please try again.',
-    club_submit_permission_error:
-      'Club submission blocked by Firestore rules. Check permissions.',
-    city_breadcrumb_home: 'Home',
-    city_breadcrumb_clubs: 'Clubs',
-    city_title_desc: 'Clubs and constellations connected to this city.',
-    city_fallback: 'This city',
-    city_clubs_title: 'Clubs',
-    city_constellations_title: 'Constellations',
-    city_clubs_empty: 'No clubs listed yet.',
-    city_constellations_empty: 'No constellations listed yet.',
-    club_not_found_title: 'Club not found',
-    club_not_found_body: 'We could not find that club.',
-    club_back: 'Back to clubs',
-    club_description: 'Description',
-    club_info: 'Useful information',
-    club_city: 'City',
-    club_country: 'Country',
-    club_date_visited: 'Date visited',
-    club_dress_code: 'Dress code',
-    club_party_type: 'Party type',
-    club_day_of_week: 'Day of week',
-    club_website: 'Website',
-    club_visit_site: 'Visit site',
-    reviews_title: 'Reviews',
-    reviews_desc: 'Full reviews and community notes.',
-    reviews_club_title: 'Club reviews',
-    reviews_club_desc: 'Reviews for this club are shown here after moderation.',
-    reviews_none: 'No reviews published yet.',
-    review_rating_label: 'Rating',
-    review_text_label: 'Review',
-    review_text_placeholder: 'Share your experience with this club...',
-    review_submit: 'Submit for review',
-    review_submitting: 'Submitting...',
-    review_signin_required: 'Sign in to submit a review.',
-    review_status_pending: 'Review submitted for moderation.',
-    review_status_error: 'Unable to submit review. Please try again.',
-    review_permission_error: 'Review blocked by Firestore rules. Check permissions.',
-    review_author_anonymous: 'anonymous',
-    review_rating_status: 'Rating: {rating}/5 · Status: {status}',
-    review_identity_label: 'Post as',
-    review_identity_profile: 'Your profile',
-    review_identity_anonymous: 'Anonymous',
-    status_pending: 'Pending',
-    status_approved: 'Approved',
-    status_rejected: 'Rejected',
-    status_published: 'Published',
-    rating_option_5: '5 - Stellar',
-    rating_option_4: '4 - Bright',
-    rating_option_3: '3 - Solid',
-    rating_option_2: '2 - Needs work',
-    rating_option_1: '1 - Poor',
-    map_page_title: 'Swingers map of europe',
-    map_page_desc: 'Debug view focused on the Europe club map.',
-  },
-  pl: {
-    site_tagline: 'Nowoczesne społeczności mapowane jak konstelacje.',
-    nav_users: 'Użytkownicy',
-    nav_constellations: 'Konstelacje',
-    nav_clubs: 'Kluby',
-    nav_events: 'Wydarzenia',
-    nav_map: 'Mapa',
-    nav_websites: 'Strony',
-    nav_blog: 'Blog',
-    nav_join: 'Dołącz',
-    nav_review: 'Recenzje',
-    nav_admin: 'Admin',
-    user_menu_label: 'Konto',
-    user_menu_edit: 'Edytuj profil',
-    user_menu_host: 'Panel gospodarza',
-    user_menu_signout: 'Wyloguj się',
-    profile_page_title: 'Twój profil',
-    profile_page_subtitle: 'Zaktualizuj dane i ustawienia prywatności.',
-    profile_save: 'Zapisz zmiany',
-    profile_saving: 'Zapisywanie...',
-    profile_saved: 'Profil zaktualizowany.',
-    profile_save_error: 'Nie udało się zaktualizować profilu.',
-    profile_signin_prompt: 'Zaloguj się, aby edytować profil.',
-    request_access: 'Poproś o dostęp',
-    link_section_title: 'Połączenia konstelacji',
-    link_section_subtitle:
-      'Wysyłaj prośby, potwierdzaj zgodę i wybieraj widoczność.',
-    link_request_email_label: 'Prośba e-mail',
-    link_request_email_placeholder: 'partner@email.com',
-    link_request_type_label: 'Typ relacji',
-    link_request_send: 'Wyślij prośbę',
-    link_request_sending: 'Wysyłanie...',
-    link_request_status_sent: 'Prośba wysłana.',
-    link_request_status_missing: 'Podaj e-mail, aby wysłać prośbę.',
-    link_request_status_self: 'Nie możesz połączyć się z własnym e-mailem.',
-    link_request_status_not_found: 'Nie znaleziono użytkownika.',
-    link_request_status_exists: 'Prośba już istnieje.',
-    link_request_status_error: 'Nie udało się wysłać prośby.',
-    link_requests_incoming_title: 'Przychodzące prośby',
-    link_requests_outgoing_title: 'Wysłane prośby',
-    link_requests_confirmed_title: 'Potwierdzone połączenia',
-    link_requests_empty: 'Brak.',
-    link_request_accept: 'Akceptuj',
-    link_request_decline: 'Odrzuć',
-    link_request_merge_label: 'Połącz widoczność w wyszukiwaniu',
-    link_request_merge_on: 'Połączone',
-    link_request_merge_off: 'Niezależne',
-    photo_upload_label: 'Zdjęcie profilu',
-    photo_upload_button: 'Wyślij',
-    photo_upload_success: 'Zdjęcie zaktualizowane.',
-    photo_upload_error: 'Nie udało się wysłać zdjęcia.',
-    notifications_title: 'Powiadomienia',
-    notifications_desc: 'Wlacz powiadomienia o zaproszeniach i zmianach.',
-    notifications_enable: 'Wlacz powiadomienia',
-    notifications_disable: 'Wylacz powiadomienia',
-    notifications_enabled: 'Powiadomienia wlaczone.',
-    notifications_disabled: 'Powiadomienia wylaczone.',
-    notifications_blocked: 'Powiadomienia sa zablokowane w przegladarce.',
-    notifications_missing_key: 'Brak klucza VAPID dla powiadomien.',
-    notifications_error: 'Nie udalo sie zaktualizowac powiadomien.',
-    verification_title: 'Weryfikacja foto',
-    verification_desc: 'Wyslij selfie z haslem weryfikacyjnym.',
-    verification_phrase_label: 'Haslo weryfikacyjne',
-    verification_phrase: 'LBS2025',
-    verification_upload_label: 'Zdjecie weryfikacyjne',
-    verification_submit: 'Wyslij weryfikacje',
-    verification_submitting: 'Wysylanie...',
-    verification_status_pending: 'Weryfikacja wyslana do sprawdzenia.',
-    verification_status_success: 'Weryfikacja zaktualizowana.',
-    verification_status_error: 'Nie udalo sie wyslac weryfikacji.',
-    verification_admin_title: 'Weryfikacje foto',
-    verification_admin_desc: 'Sprawdz selfie weryfikacyjne.',
-    verification_admin_empty: 'Brak wnioskow.',
-    verification_admin_approve: 'Akceptuj',
-    verification_admin_reject: 'Odrzuc',
-    events_page_title: 'Imprezy i wydarzenia',
-    events_page_desc: 'Zobacz nadchodzące wydarzenia, limity i status weryfikacji.',
-    event_privacy_label: 'Prywatność',
-    event_privacy_public: 'Publiczne',
-    event_privacy_vetted: 'Weryfikowane',
-    event_privacy_private: 'Prywatne',
-    event_privacy_notice_public: 'Widoczne dla wszystkich. Adres dostępny.',
-    event_privacy_notice_vetted: 'Widoczne dla wszystkich. Adres po akceptacji.',
-    event_privacy_notice_private: 'Tylko zaproszeni. Ukryte na liście.',
-    event_address_label: 'Lokalizacja',
-    event_address_hidden: 'Adres ukryty do akceptacji.',
-    event_cap_label: 'Limit gości',
-    event_cap_men: 'Mężczyźni',
-    event_cap_women: 'Kobiety',
-    event_cap_couples: 'Pary',
-    event_rsvp_title: 'RSVP',
-    event_rsvp_desc: 'Wybierz kategorię, aby poprosić o miejsce.',
-    event_rsvp_category_label: 'Kategoria',
-    event_rsvp_submit: 'Wyślij RSVP',
-    event_rsvp_sending: 'Wysyłanie...',
-    event_rsvp_full: 'Brak miejsc w tej kategorii.',
-    event_rsvp_pending: 'RSVP oczekuje na akceptację.',
-    event_rsvp_approved: 'RSVP zaakceptowane.',
-    event_rsvp_declined: 'RSVP odrzucone.',
-    event_rsvp_error: 'Nie udało się wysłać RSVP.',
-    event_rsvp_signed_out: 'Zaloguj się, aby wysłać RSVP.',
-    event_rsvp_qr_title: 'Kod wejścia',
-    event_rsvp_qr_desc: 'Pokaż kod przy wejściu.',
-    event_guest_manager_title: 'Panel gości',
-    event_guest_manager_desc: 'Weryfikuj RSVP i odznaki zaufania.',
-    event_guest_manager_pending: 'Oczekujące prośby',
-    event_guest_manager_approved: 'Zaakceptowani goście',
-    event_guest_manager_empty: 'Brak RSVP.',
-    event_guest_action_approve: 'Akceptuj',
-    event_guest_action_decline: 'Odrzuć',
-    event_not_found_title: 'Nie znaleziono wydarzenia',
-    event_not_found_body: 'Nie znaleźliśmy tego wydarzenia.',
-    event_back: 'Wróć do wydarzeń',
-    event_live_status_label: 'Status na żywo',
-    event_live_status_open: 'Otwarta',
-    event_live_status_full: 'Pelna',
-    event_live_status_last_call: 'Ostatnie wejscie',
-    event_live_update: 'Zmien status',
-    event_live_chat_title: 'Czat na żywo',
-    event_live_chat_placeholder: 'Napisz wiadomość...',
-    event_live_chat_send: 'Wyślij',
-    host_dashboard_title: 'Panel gospodarza',
-    host_dashboard_desc: 'Przegląd RSVP dla Twoich wydarzeń.',
-    host_dashboard_empty: 'Brak wydarzeń gospodarza.',
-    host_dashboard_signin: 'Zaloguj się, aby zobaczyć narzędzia hosta.',
-    footer_tagline: 'Dom społeczności dla użytkowników, konstelacji, klubów i historii.',
-    footer_guidelines: 'Wytyczne i regulamin',
-    lang_select_label: 'Wybierz język',
-    hero_pill: 'Dla twórców, klubów i wspólnych historii',
-    hero_title: 'Twórz żywą sieć ludzi, klubów i niezapomnianych nocy.',
-    hero_lead:
-      'LedBySwing łączy ludzi, konstelacje i kluby, dając miejsce na historie, recenzje i dzienniki podróży.',
-    hero_paragraph:
-      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
-    relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
-    hero_cta_primary: 'Uruchom konstelację',
-    hero_cta_secondary: 'Poznaj sieć',
-    metric_label: 'Aktywni użytkownicy',
-    metric_caption: 'Wzrost w 12 regionach',
-    register_page_title: 'Załóż konto',
-    register_page_subtitle:
-      'To tworzy konto dla jednej osoby. Pary i konstelacje dodasz później.',
-    auth_title: 'Załóż konto',
-    auth_subtitle:
-      'Profile odblokowują recenzje, prywatne kalendarze wydarzeń i zaproszenia od konstelacji.',
-    register_kicker: 'Prywatny dostęp społeczności',
-    register_heading: 'Zbuduj profil z intencją.',
-    register_body:
-      'Każde konto jest weryfikowane. Możesz przeglądać anonimowo, ale recenzje i zaproszenia wymagają profilu.',
-    label_display_name: 'Nazwa wyświetlana',
-    label_email: 'Email',
-    label_password: 'Hasło',
-    label_confirm_password: 'Potwierdź hasło',
-    label_birth_date: 'Data urodzenia',
-    label_location: 'Lokalizacja',
-    label_location_lat: 'Szerokosc geograficzna',
-    label_location_lng: 'Dlugosc geograficzna',
-    label_interests: 'Zainteresowania',
-    placeholder_display_name: 'VelvetAtlas',
-    placeholder_email: 'name@email.com',
-    placeholder_password: '8+ znaków',
-    placeholder_confirm_password: 'Wpisz ponownie hasło',
-    placeholder_birth_date: 'RRRR-MM-DD',
-    placeholder_location: 'Miasto, kraj',
-    placeholder_location_lat: '51.10',
-    placeholder_location_lng: '17.03',
-    placeholder_interests: 'Relacje otwarte, Voyeur, BDSM',
-    interest_tag_1: 'Relacje otwarte',
-    interest_tag_2: 'Voyeur',
-    interest_tag_3: 'BDSM',
-    interest_tag_4: 'Wydarzenia społeczne',
-    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
-    consent_privacy: 'Zachowaj mój profil prywatny do czasu publikacji.',
-    consent_policy_prefix: 'I have read and agree to the ',
-    consent_policy_link: 'Terms of Service and Community Guidelines',
-    consent_policy_suffix: '.',
-    register_create: 'Utwórz konto',
-    register_creating: 'Tworzenie konta...',
-    register_google_cta: 'Utwórz konto przez Google',
-    register_google_hint: 'Użyj Google, aby pominąć hasło. Wypełnimy e-mail za Ciebie.',
-    auth_sign_in_google: 'Zaloguj przez Google',
-    auth_sign_out: 'Wyloguj',
-    auth_status_setup: 'Wymagana konfiguracja logowania',
-    auth_status_config: 'Wymagana konfiguracja logowania',
-    auth_status_pending: 'Nowe konta są weryfikowane przed publikacją',
-    auth_sign_in_missing: 'Enter your email and password to sign in.',
-    auth_sign_in_success: 'Signed in.',
-    auth_sign_in_error: 'Unable to sign in. Please try again.',
-    register_password_mismatch: 'Hasła nie są zgodne.',
-    register_underage: 'Musisz mieć co najmniej 18 lat.',
-    register_status_success: 'Konto utworzone. Oczekuje na weryfikację.',
-    register_status_permission:
-      'Konto utworzone, ale zapis profilu zablokowany przez reguły Firestore.',
-    register_status_error: 'Nie udało się utworzyć konta. Spróbuj ponownie.',
-    register_expect_label: 'Czego się spodziewać',
-    register_expect_text: 'Przemyślane moderowanie i zweryfikowane profile.',
-    register_privacy_label: 'Prywatność',
-    register_privacy_text: 'Wybierz, co pokazujesz przed publikacją.',
-    register_trust_label: 'Zaufanie',
-    register_trust_text: 'Recenzje są powiązane z realnymi profilami.',
-    register_have_account: 'Masz już konto?',
-    register_sign_in: 'Zaloguj się',
-    guidelines_page_title: 'Guidelines & Terms',
-    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
-    terms_title: 'Terms of Service (The Legal Guardrails)',
-    terms_eligibility_title: 'Eligibility & Age Verification',
-    terms_eligibility_item_1:
-      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
-    terms_eligibility_item_2:
-      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
-    terms_content_title: 'Content Ownership & License',
-    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
-    terms_content_item_2:
-      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
-    terms_content_item_3:
-      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
-    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
-    terms_prohibited_item_1:
-      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
-    terms_prohibited_item_2:
-      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
-    terms_liability_title: 'Limitation of Liability',
-    terms_liability_item_1:
-      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
-    terms_liability_item_2:
-      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
-    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
-    guidelines_core_title: 'The C.O.R.E. Principles',
-    guidelines_core_item_1:
-      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
-    guidelines_core_item_2:
-      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
-    guidelines_core_item_3:
-      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
-    guidelines_core_item_4:
-      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
-    guidelines_constellation_title: 'Constellation Etiquette',
-    guidelines_constellation_item_1:
-      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
-    guidelines_constellation_item_2:
-      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
-    guidelines_event_title: 'Event Safety',
-    guidelines_event_item_1:
-      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
-    guidelines_event_item_2:
-      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
-    users_title: 'Użytkownicy',
-    users_subtitle: 'Profile, role i wspólna aktywność napędzają konstelacje.',
-    users_card_profiles_title: 'Profile',
-    users_card_profiles_body: 'Profile z rolami, zaimkami i zainteresowaniami.',
-    users_card_profiles_item1: 'Niestandardowe tagi',
-    users_card_profiles_item2: 'Status dostępności',
-    users_card_profiles_item3: 'Wspólne zainteresowania',
-    users_card_trust_title: 'Zaufanie społeczności',
-    users_card_trust_body: 'Dynamika rośnie, gdy członkowie dzielą się historiami.',
-    users_card_trust_item1: 'Polecenia społeczności',
-    users_card_trust_item2: 'Obecność na wydarzeniach',
-    users_card_trust_item3: 'Wpływ historii',
-    users_card_privacy_title: 'Ustawienia prywatności',
-    users_card_privacy_body: 'Wybierz widoczność w klubach i konstelacjach.',
-    users_card_privacy_item1: 'Widoczność per klub',
-    users_card_privacy_item2: 'Kontrola historii',
-    users_card_privacy_item3: 'Maskowanie aktywności',
-    const_title: 'Konstelacje',
-    const_subtitle: 'Każda konstelacja to kuratorowany zestaw użytkowników.',
-    const_card_title: 'Klastry współpracy',
-    const_card_body:
-      'Buduj konstelacje do mentorstwa, współtworzenia lub startów projektów.',
-    const_tag1: 'Wymagane 2+ osoby',
-    const_tag2: 'Wspólna misja',
-    const_tag3: 'Ograniczone czasowo',
-    clubs_title: 'Kluby',
-    clubs_subtitle: 'Niezależne miejsca, które organizują wydarzenia i budują konstelacje.',
-    clubs_card1_title: 'Ścieżki członkostwa',
-    clubs_card1_body: 'Poziomy dostępu dla gości, członków i ambasadorów.',
-    clubs_card1_item1: 'Wejścia na zaproszenie',
-    clubs_card1_item2: 'Check-in na wydarzenia',
-    clubs_card1_item3: 'Mapy retencji',
-    clubs_card2_title: 'Przestrzenie klubów',
-    clubs_card2_body: 'Strony klubowe z kalendarzami, galeriami i postami.',
-    clubs_card2_item1: 'Wielu administratorów',
-    clubs_card2_item2: 'Gotowe motywy',
-    clubs_card2_item3: 'Szybka publikacja',
-    clubs_card3_title: 'Wspólny wzrost',
-    clubs_card3_body: 'Sprawdź, które historie rosną z klubów.',
-    clubs_card3_item1: 'Atrybucja historii',
-    clubs_card3_item2: 'Połączenia klubów',
-    clubs_card3_item3: 'Kohorty wzrostu',
-    clubs_highlights_title: 'Polecane kluby',
-    clubs_highlights_body: 'Wybrane kluby na start.',
-    clubs_loading: 'Ładowanie...',
-    map_title: 'Mapa klubów Europy',
-    map_desc: 'Zobacz, gdzie spotyka się społeczność.',
-    map_aria: 'OpenStreetMap Europy',
-    map_pin_open: 'Otwórz {name}',
-    websites_title: 'Strony',
-    websites_desc: 'Buduj marki z profilami, klubami i historiami.',
-    websites_card1_title: 'Strony, które żyją',
-    websites_card1_body: 'Wyróżnij kalendarze, zespoły i konstelacje.',
-    websites_card1_item1: 'Elastyczne szablony',
-    websites_card1_item2: 'Wiele języków',
-    websites_card1_item3: 'SEO-friendly',
-    websites_card2_title: 'Widoczność',
-    websites_card2_body: 'Pokazuj kluby i utrzymuj odkrywalność historii.',
-    websites_card2_item1: 'Wspólne kalendarze',
-    websites_card2_item2: 'Archiwa historii',
-    websites_card2_item3: 'Highlights społeczności',
-    websites_card3_title: 'Opieka',
-    websites_card3_body: 'Zachowaj spójność publikacji i akceptacji.',
-    websites_card3_item1: 'Procesy redakcyjne',
-    websites_card3_item2: 'Role członków',
-    websites_card3_item3: 'Historia edycji',
-    website_visit: 'Odwiedź stronę',
-    blog_title: 'Wpisy na blogu',
-    blog_desc: 'Opowieści powiązane z użytkownikami i podróżami.',
-    blog_loading: 'Ładowanie archiwum...',
-    moderation_title: 'Kolejka recenzji',
-    moderation_desc: 'Nowe profile i komentarze czekają na weryfikację.',
-    moderation_pending_label: 'Oczekujące recenzje',
-    moderation_pending_desc: 'Zatwierdź lub odrzuć przed publikacją.',
-    moderation_queue_label: 'Kolejka',
-    moderation_queue_empty: 'Brak recenzji w kolejce.',
-    moderation_admin_only_title: 'Tylko admin',
-    moderation_admin_only_desc: 'Zaloguj się jako admin, aby moderować.',
-    moderation_open_admin: 'Otwórz panel admina',
-    admin_title: 'Panel administracyjny',
-    admin_subtitle: 'Moderuj recenzje i publikuj z pewnością.',
-    admin_access_denied_title: 'Brak dostępu',
-    admin_access_denied_body: 'Potrzebujesz konta admina.',
-    admin_back_home: 'Powrót do strony głównej',
-    admin_pending_title: 'Oczekujące recenzje',
-    admin_pending_desc: 'Recenzje czekające na decyzję.',
-    admin_approved_title: 'Zatwierdzone recenzje',
-    admin_approved_desc: 'Najnowsze opublikowane recenzje.',
-    admin_queue_title: 'Kolejka moderacji',
-    admin_action_approve: 'Zatwierdź',
-    admin_action_reject: 'Odrzuć',
-    admin_no_pending: 'Brak oczekujących recenzji.',
-    admin_recent_title: 'Ostatnio zatwierdzone',
-    admin_recent_empty: 'Brak zatwierdzonych recenzji.',
-    admin_events_title: 'Moderacja wydarzeń',
-    admin_events_desc: 'Przeglądaj oczekujące RSVP dla wszystkich wydarzeń.',
-    admin_events_empty: 'Brak oczekujących RSVP do wydarzeń.',
-    clubs_page_title: 'Kluby',
-    clubs_page_desc: 'Przeglądaj kluby i otwieraj szczegóły.',
-    club_submit_title: 'Zgłoś klub',
-    club_submit_desc:
-      'Znasz klub, który powinniśmy dodać? Prześlij szczegóły do weryfikacji.',
-    club_submit_name_label: 'Nazwa klubu',
-    club_submit_city_label: 'Miasto',
-    club_submit_country_label: 'Kraj',
-    club_submit_website_label: 'Strona',
-    club_submit_summary_label: 'Krótki opis',
-    club_submit_summary_placeholder: 'Opisz, co wyróżnia ten klub...',
-    club_submit_submit: 'Wyślij klub',
-    club_submit_submitting: 'Wysyłanie...',
-    club_submit_signin_required: 'Zaloguj się, aby zgłosić klub.',
-    club_submit_status_pending: 'Klub wysłany do moderacji.',
-    club_submit_status_error: 'Nie udało się wysłać klubu.',
-    club_submit_permission_error:
-      'Zgłoszenie klubu zablokowane przez reguły Firestore.',
-    city_breadcrumb_home: 'Home',
-    city_breadcrumb_clubs: 'Kluby',
-    city_title_desc: 'Kluby i konstelacje w tym mieście.',
-    city_fallback: 'To miasto',
-    city_clubs_title: 'Kluby',
-    city_constellations_title: 'Konstelacje',
-    city_clubs_empty: 'Brak klubów.',
-    city_constellations_empty: 'Brak konstelacji.',
-    club_not_found_title: 'Nie znaleziono klubu',
-    club_not_found_body: 'Nie znaleziono tego klubu.',
-    club_back: 'Powrót do klubów',
-    club_description: 'Opis',
-    club_info: 'Informacje',
-    club_city: 'Miasto',
-    club_country: 'Kraj',
-    club_date_visited: 'Data wizyty',
-    club_dress_code: 'Dress code',
-    club_party_type: 'Typ imprezy',
-    club_day_of_week: 'Dzień tygodnia',
-    club_website: 'Strona',
-    club_visit_site: 'Odwiedź',
-    reviews_title: 'Recenzje',
-    reviews_desc: 'Pełne recenzje i notatki społeczności.',
-    reviews_club_title: 'Recenzje klubu',
-    reviews_club_desc: 'Recenzje pojawią się po moderacji.',
-    reviews_none: 'Brak opublikowanych recenzji.',
-    review_rating_label: 'Ocena',
-    review_text_label: 'Recenzja',
-    review_text_placeholder: 'Podziel się doświadczeniem z tym klubem...',
-    review_submit: 'Wyślij do recenzji',
-    review_submitting: 'Wysyłanie...',
-    review_signin_required: 'Zaloguj się, aby dodać recenzję.',
-    review_status_pending: 'Recenzja wysłana do moderacji.',
-    review_status_error: 'Nie udało się wysłać recenzji.',
-    review_permission_error: 'Recenzja zablokowana przez reguły Firestore.',
-    review_author_anonymous: 'anonim',
-    review_rating_status: 'Ocena: {rating}/5 · Status: {status}',
-    review_identity_label: 'Opublikuj jako',
-    review_identity_profile: 'Twój profil',
-    review_identity_anonymous: 'Anonim',
-    status_pending: 'Oczekuje',
-    status_approved: 'Zatwierdzona',
-    status_rejected: 'Odrzucona',
-    status_published: 'Opublikowana',
-    rating_option_5: '5 - Rewelacja',
-    rating_option_4: '4 - Bardzo dobrze',
-    rating_option_3: '3 - Solidnie',
-    rating_option_2: '2 - Do poprawy',
-    rating_option_1: '1 - Słabo',
-    map_page_title: 'Mapa klubów w Europie',
-    map_page_desc: 'Widok debugowania mapy klubów.',
-  },
-  fr: {
-    site_tagline: 'Des communautés modernes cartographiées comme des constellations.',
-    nav_users: 'Utilisateurs',
-    nav_constellations: 'Constellations',
-    nav_clubs: 'Clubs',
-    nav_events: 'Événements',
-    nav_map: 'Carte',
-    nav_websites: 'Sites',
-    nav_blog: 'Blog',
-    nav_join: 'Rejoindre',
-    nav_review: 'Avis',
-    nav_admin: 'Admin',
-    user_menu_label: 'Compte',
-    user_menu_edit: 'Modifier le profil',
-    user_menu_host: 'Tableau hôte',
-    user_menu_signout: 'Se déconnecter',
-    profile_page_title: 'Votre profil',
-    profile_page_subtitle: 'Mettez à jour vos informations et votre confidentialité.',
-    profile_save: 'Enregistrer',
-    profile_saving: 'Enregistrement...',
-    profile_saved: 'Profil mis à jour.',
-    profile_save_error: "Impossible de mettre à jour le profil.",
-    profile_signin_prompt: 'Connectez-vous pour modifier votre profil.',
-    request_access: "Demander l'accès",
-    link_section_title: 'Liens de constellation',
-    link_section_subtitle:
-      'Envoyez des demandes, confirmez le consentement et choisissez la visibilité.',
-    link_request_email_label: 'Demande par e-mail',
-    link_request_email_placeholder: 'partner@email.com',
-    link_request_type_label: 'Type de lien',
-    link_request_send: 'Envoyer la demande',
-    link_request_sending: 'Envoi...',
-    link_request_status_sent: 'Demande envoyée.',
-    link_request_status_missing: 'Saisissez un e-mail pour envoyer une demande.',
-    link_request_status_self: 'Impossible de vous lier à votre propre e-mail.',
-    link_request_status_not_found: 'Aucun utilisateur trouvé.',
-    link_request_status_exists: 'Une demande existe déjà.',
-    link_request_status_error: "Impossible d'envoyer la demande.",
-    link_requests_incoming_title: 'Demandes entrantes',
-    link_requests_outgoing_title: 'Demandes sortantes',
-    link_requests_confirmed_title: 'Liens confirmés',
-    link_requests_empty: 'Aucun.',
-    link_request_accept: 'Accepter',
-    link_request_decline: 'Refuser',
-    link_request_merge_label: 'Fusionner la visibilité',
-    link_request_merge_on: 'Fusionné',
-    link_request_merge_off: 'Indépendant',
-    photo_upload_label: 'Photo de profil',
-    photo_upload_button: 'Envoyer',
-    photo_upload_success: 'Photo mise à jour.',
-    photo_upload_error: 'Impossible d’envoyer la photo.',
-    notifications_title: 'Notifications',
-    notifications_desc: 'Activez les notifications pour les invitations.',
-    notifications_enable: 'Activer les notifications',
-    notifications_disable: 'Desactiver les notifications',
-    notifications_enabled: 'Notifications activees.',
-    notifications_disabled: 'Notifications desactivees.',
-    notifications_blocked: 'Notifications bloquees dans le navigateur.',
-    notifications_missing_key: 'Cle VAPID manquante.',
-    notifications_error: 'Impossible de mettre a jour les notifications.',
-    verification_title: 'Verification photo',
-    verification_desc: 'Envoyez un selfie avec la phrase de verification.',
-    verification_phrase_label: 'Phrase de verification',
-    verification_phrase: 'LBS2025',
-    verification_upload_label: 'Photo de verification',
-    verification_submit: 'Envoyer la verification',
-    verification_submitting: 'Envoi...',
-    verification_status_pending: 'Verification envoyee pour examen.',
-    verification_status_success: 'Verification mise a jour.',
-    verification_status_error: 'Impossible d’envoyer la verification.',
-    verification_admin_title: 'Verification photo',
-    verification_admin_desc: 'Examinez les selfies de verification.',
-    verification_admin_empty: 'Aucune demande.',
-    verification_admin_approve: 'Approuver',
-    verification_admin_reject: 'Rejeter',
-    events_page_title: 'Soirées & événements',
-    events_page_desc: 'Événements à venir, quotas et validation des hôtes.',
-    event_privacy_label: 'Niveau de confidentialité',
-    event_privacy_public: 'Public',
-    event_privacy_vetted: 'Vérifié',
-    event_privacy_private: 'Privé',
-    event_privacy_notice_public: 'Visible pour tous. Adresse partagée.',
-    event_privacy_notice_vetted:
-      'Visible pour tous. Adresse après validation.',
-    event_privacy_notice_private: 'Sur invitation. Masqué publiquement.',
-    event_address_label: 'Lieu',
-    event_address_hidden: 'Adresse masquée jusqu’à validation.',
-    event_cap_label: 'Capacité',
-    event_cap_men: 'Hommes',
-    event_cap_women: 'Femmes',
-    event_cap_couples: 'Couples',
-    event_rsvp_title: 'RSVP',
-    event_rsvp_desc: 'Choisissez une catégorie pour demander une place.',
-    event_rsvp_category_label: 'Catégorie',
-    event_rsvp_submit: 'Envoyer RSVP',
-    event_rsvp_sending: 'Envoi...',
-    event_rsvp_full: 'Catégorie complète.',
-    event_rsvp_pending: 'RSVP en attente.',
-    event_rsvp_approved: 'RSVP accepté.',
-    event_rsvp_declined: 'RSVP refusé.',
-    event_rsvp_error: 'Impossible d’envoyer RSVP.',
-    event_rsvp_signed_out: 'Connectez-vous pour RSVP.',
-    event_rsvp_qr_title: 'QR d’entrée',
-    event_rsvp_qr_desc: 'Présentez ce code à l’entrée.',
-    event_guest_manager_title: 'Gestion des invités',
-    event_guest_manager_desc: 'Examinez les RSVPs et badges.',
-    event_guest_manager_pending: 'Demandes en attente',
-    event_guest_manager_approved: 'Invités approuvés',
-    event_guest_manager_empty: 'Aucun RSVP.',
-    event_guest_action_approve: 'Approuver',
-    event_guest_action_decline: 'Refuser',
-    event_not_found_title: 'Événement introuvable',
-    event_not_found_body: 'Impossible de trouver cet événement.',
-    event_back: 'Retour aux événements',
-    event_live_status_label: 'Statut en direct',
-    event_live_status_open: 'Ouvert',
-    event_live_status_full: 'Complet',
-    event_live_status_last_call: 'Dernier appel',
-    event_live_update: 'Mettre à jour',
-    event_live_chat_title: 'Chat en direct',
-    event_live_chat_placeholder: 'Ecrivez un message...',
-    event_live_chat_send: 'Envoyer',
-    host_dashboard_title: 'Tableau hôte',
-    host_dashboard_desc: 'Suivez les RSVPs de vos événements.',
-    host_dashboard_empty: 'Aucun événement en tant qu’hôte.',
-    host_dashboard_signin: 'Connectez-vous pour les outils hôte.',
-    footer_tagline: 'Maison de la communauté pour utilisateurs, constellations, clubs et histoires.',
-    footer_guidelines: 'Consignes et conditions',
-    lang_select_label: 'Choisir la langue',
-    hero_pill: 'Pour les créateurs, les clubs et les histoires partagées',
-    hero_title: 'Façonnez un réseau vivant de personnes, de clubs et de nuits inoubliables.',
-    hero_lead:
-      'LedBySwing réunit personnes, constellations et clubs pour partager histoires, avis et carnets de voyage.',
-    hero_paragraph:
-      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
-    relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
-    hero_cta_primary: 'Lancer une constellation',
-    hero_cta_secondary: 'Explorer le graphe',
-    metric_label: 'Utilisateurs actifs',
-    metric_caption: 'En croissance dans 12 régions',
-    register_page_title: 'Créer votre compte',
-    register_page_subtitle:
-      'Ceci crée un compte pour une seule personne. Les couples ou constellations pourront être ajoutés plus tard.',
-    auth_title: 'Créer votre compte',
-    auth_subtitle:
-      'Les profils débloquent les avis, les calendriers privés et les invitations.',
-    register_kicker: 'Accès communautaire privé',
-    register_heading: 'Construisez un profil intentionnel.',
-    register_body:
-      'Chaque compte est vérifié. Vous pouvez naviguer anonymement, mais les avis exigent un profil.',
-    label_display_name: 'Nom affiché',
-    label_email: 'Email',
-    label_password: 'Mot de passe',
-    label_confirm_password: 'Confirmer le mot de passe',
-    label_birth_date: 'Date de naissance',
-    label_location: 'Localisation',
-    label_location_lat: 'Latitude',
-    label_location_lng: 'Longitude',
-    label_interests: 'Intérêts',
-    placeholder_display_name: 'VelvetAtlas',
-    placeholder_email: 'name@email.com',
-    placeholder_password: '8+ caractères',
-    placeholder_confirm_password: 'Ressaisir le mot de passe',
-    placeholder_birth_date: 'AAAA-MM-JJ',
-    placeholder_location: 'Ville, pays',
-    placeholder_location_lat: '48.85',
-    placeholder_location_lng: '2.35',
-    placeholder_interests: 'Relations ouvertes, Voyeur, BDSM',
-    interest_tag_1: 'Relations ouvertes',
-    interest_tag_2: 'Voyeur',
-    interest_tag_3: 'BDSM',
-    interest_tag_4: 'Événements sociaux',
-    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
-    consent_privacy: 'Garder mon profil privé jusqu’à publication.',
-    consent_policy_prefix: 'I have read and agree to the ',
-    consent_policy_link: 'Terms of Service and Community Guidelines',
-    consent_policy_suffix: '.',
-    register_create: 'Créer un compte',
-    register_creating: 'Création...',
-    register_google_cta: 'Créer un compte avec Google',
-    register_google_hint:
-      "Utilisez Google pour éviter le mot de passe. Nous préremplirons l'email.",
-    auth_sign_in_google: 'Se connecter avec Google',
-    auth_sign_out: 'Se déconnecter',
-    auth_status_setup: 'Configuration requise',
-    auth_status_config: 'Configuration requise',
-    auth_status_pending: 'Les nouveaux comptes sont vérifiés avant publication',
-    auth_sign_in_missing: 'Enter your email and password to sign in.',
-    auth_sign_in_success: 'Signed in.',
-    auth_sign_in_error: 'Unable to sign in. Please try again.',
-    register_password_mismatch: 'Les mots de passe ne correspondent pas.',
-    register_underage: 'Vous devez avoir au moins 18 ans.',
-    register_status_success: 'Compte créé. En attente de validation.',
-    register_status_permission:
-      'Compte créé, mais stockage bloqué par les règles Firestore.',
-    register_status_error: 'Impossible de créer le compte. Réessayez.',
-    register_expect_label: 'À prévoir',
-    register_expect_text: 'Modération attentive et profils vérifiés.',
-    register_privacy_label: 'Confidentialité',
-    register_privacy_text: 'Choisissez ce que vous montrez avant publication.',
-    register_trust_label: 'Confiance',
-    register_trust_text: 'Les avis sont liés à de vrais profils.',
-    register_have_account: 'Vous avez déjà un compte ?',
-    register_sign_in: 'Se connecter',
-    guidelines_page_title: 'Guidelines & Terms',
-    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
-    terms_title: 'Terms of Service (The Legal Guardrails)',
-    terms_eligibility_title: 'Eligibility & Age Verification',
-    terms_eligibility_item_1:
-      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
-    terms_eligibility_item_2:
-      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
-    terms_content_title: 'Content Ownership & License',
-    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
-    terms_content_item_2:
-      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
-    terms_content_item_3:
-      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
-    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
-    terms_prohibited_item_1:
-      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
-    terms_prohibited_item_2:
-      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
-    terms_liability_title: 'Limitation of Liability',
-    terms_liability_item_1:
-      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
-    terms_liability_item_2:
-      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
-    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
-    guidelines_core_title: 'The C.O.R.E. Principles',
-    guidelines_core_item_1:
-      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
-    guidelines_core_item_2:
-      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
-    guidelines_core_item_3:
-      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
-    guidelines_core_item_4:
-      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
-    guidelines_constellation_title: 'Constellation Etiquette',
-    guidelines_constellation_item_1:
-      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
-    guidelines_constellation_item_2:
-      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
-    guidelines_event_title: 'Event Safety',
-    guidelines_event_item_1:
-      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
-    guidelines_event_item_2:
-      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
-    users_title: 'Utilisateurs',
-    users_subtitle: "Profils, rôles et activité partagée alimentent chaque constellation.",
-    users_card_profiles_title: 'Profils',
-    users_card_profiles_body: 'Profils avec rôles, pronoms et intérêts.',
-    users_card_profiles_item1: 'Tags personnalisés',
-    users_card_profiles_item2: 'Statut de disponibilité',
-    users_card_profiles_item3: 'Intérêts partagés',
-    users_card_trust_title: 'Confiance',
-    users_card_trust_body: 'L’élan grandit quand la communauté partage.',
-    users_card_trust_item1: 'Recommandations',
-    users_card_trust_item2: 'Présence aux événements',
-    users_card_trust_item3: 'Impact des histoires',
-    users_card_privacy_title: 'Choix de confidentialité',
-    users_card_privacy_body: 'Choisissez votre visibilité dans les clubs.',
-    users_card_privacy_item1: 'Visibilité par club',
-    users_card_privacy_item2: 'Contrôle des histoires',
-    users_card_privacy_item3: 'Masquage d’activité',
-    const_title: 'Constellations',
-    const_subtitle: 'Chaque constellation regroupe deux utilisateurs ou plus.',
-    const_card_title: 'Clusters collaboratifs',
-    const_card_body:
-      'Créez des constellations pour mentorat, co‑création ou lancement.',
-    const_tag1: '2+ utilisateurs',
-    const_tag2: 'Mission partagée',
-    const_tag3: 'Durée limitée',
-    clubs_title: 'Clubs',
-    clubs_subtitle: 'Espaces indépendants qui organisent des événements et des histoires.',
-    clubs_card1_title: 'Parcours membres',
-    clubs_card1_body: 'Accès par niveaux pour invités, membres et ambassadeurs.',
-    clubs_card1_item1: 'Entrées sur invitation',
-    clubs_card1_item2: 'Check-in événements',
-    clubs_card1_item3: 'Cartes de rétention',
-    clubs_card2_title: 'Espaces club',
-    clubs_card2_body: 'Sites dédiés avec calendriers, galeries et posts.',
-    clubs_card2_item1: 'Multi‑admin',
-    clubs_card2_item2: 'Thèmes prêts',
-    clubs_card2_item3: 'Publication rapide',
-    clubs_card3_title: 'Croissance partagée',
-    clubs_card3_body: 'Voyez ce qui émerge de chaque cohorte.',
-    clubs_card3_item1: 'Attribution des histoires',
-    clubs_card3_item2: 'Connexions clubs',
-    clubs_card3_item3: 'Cohortes de croissance',
-    clubs_highlights_title: 'Clubs à la une',
-    clubs_highlights_body: 'Clubs recommandés pour commencer.',
-    clubs_loading: 'Chargement...',
-    map_title: 'Carte des clubs en Europe',
-    map_desc: 'Voir où la communauté se retrouve en Europe.',
-    map_aria: "OpenStreetMap de l'Europe",
-    map_pin_open: 'Ouvrir {name}',
-    websites_title: 'Sites',
-    websites_desc: 'Lancez des sites de marque avec profils et histoires.',
-    websites_card1_title: 'Pages vivantes',
-    websites_card1_body: 'Mettez en avant calendriers, équipes et constellations.',
-    websites_card1_item1: 'Templates adaptatifs',
-    websites_card1_item2: 'Copie multilingue',
-    websites_card1_item3: 'Optimisé SEO',
-    websites_card2_title: 'Visibilité',
-    websites_card2_body: 'Exposez les clubs et les histoires.',
-    websites_card2_item1: 'Calendriers partagés',
-    websites_card2_item2: 'Archives',
-    websites_card2_item3: 'Temps forts',
-    websites_card3_title: 'Gouvernance',
-    websites_card3_body: 'Gardez les validations alignées.',
-    websites_card3_item1: 'Flux éditoriaux',
-    websites_card3_item2: 'Rôles membres',
-    websites_card3_item3: 'Historique',
-    website_visit: 'Voir le site',
-    blog_title: 'Articles de blog',
-    blog_desc: 'Récits liés aux utilisateurs et aux voyages.',
-    blog_loading: 'Chargement des archives...',
-    moderation_title: 'File de validation',
-    moderation_desc: 'Nouveaux profils et avis en attente de validation.',
-    moderation_pending_label: 'Avis en attente',
-    moderation_pending_desc: 'Approuvez ou refusez avant publication.',
-    moderation_queue_label: 'File',
-    moderation_queue_empty: "Aucun avis dans la file.",
-    moderation_admin_only_title: 'Admins uniquement',
-    moderation_admin_only_desc: 'Connectez-vous en admin pour modérer.',
-    moderation_open_admin: 'Ouvrir le panneau admin',
-    admin_title: 'Panneau admin',
-    admin_subtitle: 'Modérez les avis et publiez en toute confiance.',
-    admin_access_denied_title: 'Accès refusé',
-    admin_access_denied_body: "Vous devez être admin pour accéder à ce panneau.",
-    admin_back_home: "Retour à l'accueil",
-    admin_pending_title: 'Avis en attente',
-    admin_pending_desc: 'Avis en attente de décision.',
-    admin_approved_title: 'Avis approuvés',
-    admin_approved_desc: 'Avis publiés récemment.',
-    admin_queue_title: 'File de modération',
-    admin_action_approve: 'Approuver',
-    admin_action_reject: 'Refuser',
-    admin_no_pending: 'Aucun avis en attente.',
-    admin_recent_title: 'Approuvés récemment',
-    admin_recent_empty: 'Aucun avis approuvé.',
-    admin_events_title: 'Modération des événements',
-    admin_events_desc: 'Examinez les RSVPs en attente pour tous les événements.',
-    admin_events_empty: "Aucun RSVP d'événement en attente.",
-    clubs_page_title: 'Clubs',
-    clubs_page_desc: 'Parcourez tous les clubs et leurs avis.',
-    club_submit_title: 'Soumettre un club',
-    club_submit_desc:
-      'Vous connaissez un club à ajouter ? Envoyez les détails pour validation.',
-    club_submit_name_label: 'Nom du club',
-    club_submit_city_label: 'Ville',
-    club_submit_country_label: 'Pays',
-    club_submit_website_label: 'Site',
-    club_submit_summary_label: 'Courte description',
-    club_submit_summary_placeholder: 'Expliquez ce qui rend ce club unique...',
-    club_submit_submit: 'Soumettre le club',
-    club_submit_submitting: 'Soumission...',
-    club_submit_signin_required: 'Connectez-vous pour soumettre un club.',
-    club_submit_status_pending: 'Club soumis pour modération.',
-    club_submit_status_error: 'Impossible de soumettre le club.',
-    club_submit_permission_error: 'Soumission bloquée par les règles Firestore.',
-    city_breadcrumb_home: 'Accueil',
-    city_breadcrumb_clubs: 'Clubs',
-    city_title_desc: 'Clubs et constellations liés à cette ville.',
-    city_fallback: 'Cette ville',
-    city_clubs_title: 'Clubs',
-    city_constellations_title: 'Constellations',
-    city_clubs_empty: 'Aucun club pour le moment.',
-    city_constellations_empty: 'Aucune constellation pour le moment.',
-    club_not_found_title: 'Club introuvable',
-    club_not_found_body: 'Impossible de trouver ce club.',
-    club_back: 'Retour aux clubs',
-    club_description: 'Description',
-    club_info: 'Infos utiles',
-    club_city: 'Ville',
-    club_country: 'Pays',
-    club_date_visited: 'Date de visite',
-    club_dress_code: 'Tenue',
-    club_party_type: "Type de soirée",
-    club_day_of_week: 'Jour de la semaine',
-    club_website: 'Site',
-    club_visit_site: 'Visiter',
-    reviews_title: 'Avis',
-    reviews_desc: 'Avis complets et notes de la communauté.',
-    reviews_club_title: 'Avis du club',
-    reviews_club_desc: 'Avis affichés après modération.',
-    reviews_none: 'Aucun avis publié.',
-    review_rating_label: 'Note',
-    review_text_label: 'Avis',
-    review_text_placeholder: 'Partagez votre expérience avec ce club...',
-    review_submit: 'Soumettre pour validation',
-    review_submitting: 'Soumission...',
-    review_signin_required: 'Connectez-vous pour soumettre un avis.',
-    review_status_pending: 'Avis soumis pour modération.',
-    review_status_error: "Impossible d'envoyer l'avis.",
-    review_permission_error: "Avis bloqué par les règles Firestore.",
-    review_author_anonymous: 'anonyme',
-    review_rating_status: 'Note : {rating}/5 · Statut : {status}',
-    review_identity_label: 'Publier en tant que',
-    review_identity_profile: 'Votre profil',
-    review_identity_anonymous: 'Anonyme',
-    status_pending: 'En attente',
-    status_approved: 'Approuvé',
-    status_rejected: 'Refusé',
-    status_published: 'Publié',
-    rating_option_5: '5 - Excellent',
-    rating_option_4: '4 - Très bien',
-    rating_option_3: '3 - Correct',
-    rating_option_2: '2 - À améliorer',
-    rating_option_1: '1 - Mauvais',
-    map_page_title: "Carte des clubs d'Europe",
-    map_page_desc: 'Vue debug de la carte des clubs.',
-  },
-  de: {
-    site_tagline: 'Moderne Communities, wie Sternbilder kartiert.',
-    nav_users: 'Nutzer',
-    nav_constellations: 'Konstellationen',
-    nav_clubs: 'Clubs',
-    nav_events: 'Events',
-    nav_map: 'Karte',
-    nav_websites: 'Websites',
-    nav_blog: 'Blog',
-    nav_join: 'Beitreten',
-    nav_review: 'Reviews',
-    nav_admin: 'Admin',
-    user_menu_label: 'Konto',
-    user_menu_edit: 'Profil bearbeiten',
-    user_menu_host: 'Host-Dashboard',
-    user_menu_signout: 'Abmelden',
-    profile_page_title: 'Dein Profil',
-    profile_page_subtitle: 'Aktualisiere deine Angaben und Privatsphäre.',
-    profile_save: 'Änderungen speichern',
-    profile_saving: 'Speichern...',
-    profile_saved: 'Profil aktualisiert.',
-    profile_save_error: 'Profil konnte nicht aktualisiert werden.',
-    profile_signin_prompt: 'Melde dich an, um dein Profil zu bearbeiten.',
-    request_access: 'Zugang anfordern',
-    link_section_title: 'Konstellations-Links',
-    link_section_subtitle:
-      'Anfragen senden, Zustimmung bestätigen und Sichtbarkeit wählen.',
-    link_request_email_label: 'Anfrage per E-Mail',
-    link_request_email_placeholder: 'partner@email.com',
-    link_request_type_label: 'Beziehungstyp',
-    link_request_send: 'Anfrage senden',
-    link_request_sending: 'Senden...',
-    link_request_status_sent: 'Anfrage gesendet.',
-    link_request_status_missing: 'E-Mail eingeben, um eine Anfrage zu senden.',
-    link_request_status_self: 'Du kannst dich nicht mit deiner eigenen E-Mail verknüpfen.',
-    link_request_status_not_found: 'Kein Nutzer gefunden.',
-    link_request_status_exists: 'Eine Anfrage existiert bereits.',
-    link_request_status_error: 'Anfrage konnte nicht gesendet werden.',
-    link_requests_incoming_title: 'Eingehende Anfragen',
-    link_requests_outgoing_title: 'Ausgehende Anfragen',
-    link_requests_confirmed_title: 'Bestätigte Links',
-    link_requests_empty: 'Keine.',
-    link_request_accept: 'Annehmen',
-    link_request_decline: 'Ablehnen',
-    link_request_merge_label: 'Sichtbarkeit zusammenlegen',
-    link_request_merge_on: 'Zusammengelegt',
-    link_request_merge_off: 'Unabhängig',
-    photo_upload_label: 'Profilfoto',
-    photo_upload_button: 'Hochladen',
-    photo_upload_success: 'Foto aktualisiert.',
-    photo_upload_error: 'Foto konnte nicht hochgeladen werden.',
-    notifications_title: 'Benachrichtigungen',
-    notifications_desc: 'Aktiviere Push-Benachrichtigungen fuer Einladungen.',
-    notifications_enable: 'Benachrichtigungen aktivieren',
-    notifications_disable: 'Benachrichtigungen deaktivieren',
-    notifications_enabled: 'Benachrichtigungen aktiviert.',
-    notifications_disabled: 'Benachrichtigungen deaktiviert.',
-    notifications_blocked: 'Benachrichtigungen im Browser blockiert.',
-    notifications_missing_key: 'VAPID-Schluessel fehlt.',
-    notifications_error: 'Benachrichtigungen konnten nicht aktualisiert werden.',
-    verification_title: 'Foto-Verifizierung',
-    verification_desc: 'Lade ein Selfie mit dem Verifizierungscode hoch.',
-    verification_phrase_label: 'Verifizierungscode',
-    verification_phrase: 'LBS2025',
-    verification_upload_label: 'Verifizierungsfoto',
-    verification_submit: 'Verifizierung senden',
-    verification_submitting: 'Senden...',
-    verification_status_pending: 'Verifizierung zur Prufung gesendet.',
-    verification_status_success: 'Verifizierung aktualisiert.',
-    verification_status_error: 'Verifizierung konnte nicht gesendet werden.',
-    verification_admin_title: 'Foto-Verifizierung',
-    verification_admin_desc: 'Prufe eingereichte Selfies.',
-    verification_admin_empty: 'Keine Anfragen.',
-    verification_admin_approve: 'Freigeben',
-    verification_admin_reject: 'Ablehnen',
-    events_page_title: 'Partys & Events',
-    events_page_desc: 'Kommende Events, Kontingente und Host-Freigaben.',
-    event_privacy_label: 'Privatsphäre',
-    event_privacy_public: 'Öffentlich',
-    event_privacy_vetted: 'Geprüft',
-    event_privacy_private: 'Privat',
-    event_privacy_notice_public: 'Für alle sichtbar. Adresse wird angezeigt.',
-    event_privacy_notice_vetted:
-      'Für alle sichtbar. Adresse nach Freigabe.',
-    event_privacy_notice_private: 'Nur auf Einladung. Nicht gelistet.',
-    event_address_label: 'Ort',
-    event_address_hidden: 'Adresse bis zur Freigabe verborgen.',
-    event_cap_label: 'Gästelimit',
-    event_cap_men: 'Männer',
-    event_cap_women: 'Frauen',
-    event_cap_couples: 'Paare',
-    event_rsvp_title: 'RSVP',
-    event_rsvp_desc: 'Kategorie wählen und Platz anfragen.',
-    event_rsvp_category_label: 'Kategorie',
-    event_rsvp_submit: 'RSVP senden',
-    event_rsvp_sending: 'Senden...',
-    event_rsvp_full: 'Kategorie ist voll.',
-    event_rsvp_pending: 'RSVP wartet auf Freigabe.',
-    event_rsvp_approved: 'RSVP bestätigt.',
-    event_rsvp_declined: 'RSVP abgelehnt.',
-    event_rsvp_error: 'RSVP konnte nicht gesendet werden.',
-    event_rsvp_signed_out: 'Zum RSVP anmelden.',
-    event_rsvp_qr_title: 'Check-in QR',
-    event_rsvp_qr_desc: 'Zeige den Code am Eingang.',
-    event_guest_manager_title: 'Guest Manager',
-    event_guest_manager_desc: 'RSVPs und Trust Badges prüfen.',
-    event_guest_manager_pending: 'Offene Anfragen',
-    event_guest_manager_approved: 'Bestätigte Gäste',
-    event_guest_manager_empty: 'Noch keine RSVPs.',
-    event_guest_action_approve: 'Freigeben',
-    event_guest_action_decline: 'Ablehnen',
-    event_not_found_title: 'Event nicht gefunden',
-    event_not_found_body: 'Dieses Event wurde nicht gefunden.',
-    event_back: 'Zurück zu Events',
-    event_live_status_label: 'Live-Status',
-    event_live_status_open: 'Offen',
-    event_live_status_full: 'Voll',
-    event_live_status_last_call: 'Letzter Aufruf',
-    event_live_update: 'Status aktualisieren',
-    event_live_chat_title: 'Live-Chat',
-    event_live_chat_placeholder: 'Nachricht eingeben...',
-    event_live_chat_send: 'Senden',
-    host_dashboard_title: 'Host-Dashboard',
-    host_dashboard_desc: 'RSVPs deiner Events im Blick.',
-    host_dashboard_empty: 'Noch keine Host-Events.',
-    host_dashboard_signin: 'Melde dich an, um Host-Tools zu sehen.',
-    footer_tagline: 'Community-Zuhause für Nutzer, Konstellationen, Clubs und Stories.',
-    footer_guidelines: 'Richtlinien & Bedingungen',
-    lang_select_label: 'Sprache wählen',
-    hero_pill: 'Für Creator, Clubs und gemeinsame Geschichten',
-    hero_title: 'Forme ein lebendiges Netzwerk aus Menschen, Clubs und Nächten.',
-    hero_lead:
-      'LedBySwing verbindet Menschen, Konstellationen und Clubs für Stories, Reviews und Reisetagebücher.',
-    hero_paragraph:
-      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
-    relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
-    hero_cta_primary: 'Konstellation starten',
-    hero_cta_secondary: 'Netz erkunden',
-    metric_label: 'Aktive Nutzer',
-    metric_caption: 'Wächst in 12 Regionen',
-    register_page_title: 'Konto erstellen',
-    register_page_subtitle:
-      'Hier erstellst du ein Einzelkonto. Paare oder Konstellationen kannst du später hinzufügen.',
-    auth_title: 'Konto erstellen',
-    auth_subtitle:
-      'Profile schalten Reviews, private Kalender und Einladungen frei.',
-    register_kicker: 'Privater Community-Zugang',
-    register_heading: 'Erstelle ein Profil mit Absicht.',
-    register_body:
-      'Jedes Konto wird geprüft. Browsen ist anonym möglich, Reviews brauchen ein Profil.',
-    label_display_name: 'Anzeigename',
-    label_email: 'E-Mail',
-    label_password: 'Passwort',
-    label_confirm_password: 'Passwort bestätigen',
-    label_birth_date: 'Geburtsdatum',
-    label_location: 'Ort',
-    label_location_lat: 'Breitengrad',
-    label_location_lng: 'Laengengrad',
-    label_interests: 'Interessen',
-    placeholder_display_name: 'VelvetAtlas',
-    placeholder_email: 'name@email.com',
-    placeholder_password: '8+ Zeichen',
-    placeholder_confirm_password: 'Passwort erneut',
-    placeholder_birth_date: 'JJJJ-MM-TT',
-    placeholder_location: 'Stadt, Land',
-    placeholder_location_lat: '52.52',
-    placeholder_location_lng: '13.40',
-    placeholder_interests: 'Offene Beziehungen, Voyeur, BDSM',
-    interest_tag_1: 'Offene Beziehungen',
-    interest_tag_2: 'Voyeur',
-    interest_tag_3: 'BDSM',
-    interest_tag_4: 'Social Events',
-    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
-    consent_privacy: 'Profil privat halten, bis ich es veröffentliche.',
-    consent_policy_prefix: 'I have read and agree to the ',
-    consent_policy_link: 'Terms of Service and Community Guidelines',
-    consent_policy_suffix: '.',
-    register_create: 'Konto erstellen',
-    register_creating: 'Konto wird erstellt...',
-    register_google_cta: 'Konto mit Google erstellen',
-    register_google_hint:
-      'Nutze Google, um kein Passwort zu brauchen. Wir füllen die E-Mail vorab aus.',
-    auth_sign_in_google: 'Mit Google anmelden',
-    auth_sign_out: 'Abmelden',
-    auth_status_setup: 'Anmeldung muss konfiguriert werden',
-    auth_status_config: 'Anmeldung muss konfiguriert werden',
-    auth_status_pending: 'Neue Konten werden vor Veröffentlichung geprüft',
-    auth_sign_in_missing: 'Enter your email and password to sign in.',
-    auth_sign_in_success: 'Signed in.',
-    auth_sign_in_error: 'Unable to sign in. Please try again.',
-    register_password_mismatch: 'Passwörter stimmen nicht überein.',
-    register_underage: 'Du musst mindestens 18 Jahre alt sein.',
-    register_status_success: 'Konto erstellt. Prüfung ausstehend.',
-    register_status_permission:
-      'Konto erstellt, aber Profilspeicherung durch Firestore blockiert.',
-    register_status_error: 'Konto konnte nicht erstellt werden.',
-    register_expect_label: 'Erwartung',
-    register_expect_text: 'Sorgfältige Moderation und verifizierte Profile.',
-    register_privacy_label: 'Privatsphäre',
-    register_privacy_text: 'Wähle, was du vor der Veröffentlichung zeigst.',
-    register_trust_label: 'Vertrauen',
-    register_trust_text: 'Reviews sind an echte Profile gebunden.',
-    register_have_account: 'Schon ein Konto?',
-    register_sign_in: 'Anmelden',
-    guidelines_page_title: 'Guidelines & Terms',
-    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
-    terms_title: 'Terms of Service (The Legal Guardrails)',
-    terms_eligibility_title: 'Eligibility & Age Verification',
-    terms_eligibility_item_1:
-      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
-    terms_eligibility_item_2:
-      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
-    terms_content_title: 'Content Ownership & License',
-    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
-    terms_content_item_2:
-      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
-    terms_content_item_3:
-      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
-    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
-    terms_prohibited_item_1:
-      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
-    terms_prohibited_item_2:
-      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
-    terms_liability_title: 'Limitation of Liability',
-    terms_liability_item_1:
-      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
-    terms_liability_item_2:
-      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
-    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
-    guidelines_core_title: 'The C.O.R.E. Principles',
-    guidelines_core_item_1:
-      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
-    guidelines_core_item_2:
-      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
-    guidelines_core_item_3:
-      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
-    guidelines_core_item_4:
-      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
-    guidelines_constellation_title: 'Constellation Etiquette',
-    guidelines_constellation_item_1:
-      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
-    guidelines_constellation_item_2:
-      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
-    guidelines_event_title: 'Event Safety',
-    guidelines_event_item_1:
-      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
-    guidelines_event_item_2:
-      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
-    users_title: 'Nutzer',
-    users_subtitle: 'Profile, Rollen und Aktivität treiben Konstellationen an.',
-    users_card_profiles_title: 'Profile',
-    users_card_profiles_body: 'Profile mit Rollen, Pronomen und Interessen.',
-    users_card_profiles_item1: 'Eigene Tags',
-    users_card_profiles_item2: 'Verfügbarkeitsstatus',
-    users_card_profiles_item3: 'Geteilte Interessen',
-    users_card_trust_title: 'Community-Vertrauen',
-    users_card_trust_body: 'Momentum wächst durch Beiträge und Stories.',
-    users_card_trust_item1: 'Empfehlungen',
-    users_card_trust_item2: 'Event-Teilnahme',
-    users_card_trust_item3: 'Story-Impact',
-    users_card_privacy_title: 'Privatsphäre',
-    users_card_privacy_body: 'Wähle deine Sichtbarkeit über Clubs hinweg.',
-    users_card_privacy_item1: 'Sichtbarkeit pro Club',
-    users_card_privacy_item2: 'Story-Gating',
-    users_card_privacy_item3: 'Aktivität maskieren',
-    const_title: 'Konstellationen',
-    const_subtitle: 'Jede Konstellation besteht aus zwei oder mehr Nutzern.',
-    const_card_title: 'Kollaborative Cluster',
-    const_card_body:
-      'Konstellationen für Mentoring, Co‑Creation oder Launches.',
-    const_tag1: '2+ Nutzer',
-    const_tag2: 'Gemeinsame Mission',
-    const_tag3: 'Zeitlich begrenzt',
-    clubs_title: 'Clubs',
-    clubs_subtitle: 'Unabhängige Orte mit Events, Posts und Konstellationen.',
-    clubs_card1_title: 'Mitgliedschafts-Levels',
-    clubs_card1_body: 'Zugangsstufen für Gäste, Mitglieder und Botschafter.',
-    clubs_card1_item1: 'Einladungspflicht',
-    clubs_card1_item2: 'Event-Check-ins',
-    clubs_card1_item3: 'Retention-Heatmaps',
-    clubs_card2_title: 'Club-Spaces',
-    clubs_card2_body: 'Clubseiten mit Kalendern, Galerien und Posts.',
-    clubs_card2_item1: 'Multi-Admin',
-    clubs_card2_item2: 'Themen-Presets',
-    clubs_card2_item3: 'Schnelles Publishing',
-    clubs_card3_title: 'Gemeinsames Wachstum',
-    clubs_card3_body: 'Sieh, was aus jedem Club wächst.',
-    clubs_card3_item1: 'Story-Attribution',
-    clubs_card3_item2: 'Club-Verbindungen',
-    clubs_card3_item3: 'Wachstums-Kohorten',
-    clubs_highlights_title: 'Club-Highlights',
-    clubs_highlights_body: 'Empfohlene Clubs zum Einstieg.',
-    clubs_loading: 'Lädt...',
-    map_title: 'Europa-Clubkarte',
-    map_desc: 'Sieh, wo sich die Community trifft.',
-    map_aria: 'OpenStreetMap von Europa',
-    map_pin_open: 'Öffne {name}',
-    websites_title: 'Websites',
-    websites_desc: 'Launch von Markenauftritten mit Profilen und Stories.',
-    websites_card1_title: 'Lebendige Seiten',
-    websites_card1_body: 'Zeige Kalender, Teams und Konstellationen.',
-    websites_card1_item1: 'Adaptive Templates',
-    websites_card1_item2: 'Mehrsprachige Texte',
-    websites_card1_item3: 'SEO-freundlich',
-    websites_card2_title: 'Sichtbarkeit',
-    websites_card2_body: 'Clubs sichtbar machen und Stories auffindbar halten.',
-    websites_card2_item1: 'Geteilte Kalender',
-    websites_card2_item2: 'Story-Archive',
-    websites_card2_item3: 'Community-Highlights',
-    websites_card3_title: 'Stewardship',
-    websites_card3_body: 'Freigaben und Publishing im Einklang.',
-    websites_card3_item1: 'Redaktionsflows',
-    websites_card3_item2: 'Mitgliederrollen',
-    websites_card3_item3: 'Edit-Historie',
-    website_visit: 'Website besuchen',
-    blog_title: 'Blogbeiträge',
-    blog_desc: 'Stories rund um Nutzer, Konstellationen und Reisen.',
-    blog_loading: 'Archiv wird geladen...',
-    moderation_title: 'Review-Queue',
-    moderation_desc: 'Neue Profile und Reviews warten auf Freigabe.',
-    moderation_pending_label: 'Offene Reviews',
-    moderation_pending_desc: 'Vor Veröffentlichung prüfen.',
-    moderation_queue_label: 'Queue',
-    moderation_queue_empty: 'Keine Reviews in der Queue.',
-    moderation_admin_only_title: 'Nur Admins',
-    moderation_admin_only_desc: 'Als Admin anmelden, um zu moderieren.',
-    moderation_open_admin: 'Admin-Panel öffnen',
-    admin_title: 'Admin-Panel',
-    admin_subtitle: 'Reviews moderieren und sicher veröffentlichen.',
-    admin_access_denied_title: 'Zugriff verweigert',
-    admin_access_denied_body: 'Du brauchst ein Admin-Konto.',
-    admin_back_home: 'Zurück zur Startseite',
-    admin_pending_title: 'Offene Reviews',
-    admin_pending_desc: 'Reviews mit Entscheidungsbedarf.',
-    admin_approved_title: 'Freigegebene Reviews',
-    admin_approved_desc: 'Zuletzt veröffentlichte Reviews.',
-    admin_queue_title: 'Moderations-Queue',
-    admin_action_approve: 'Freigeben',
-    admin_action_reject: 'Ablehnen',
-    admin_no_pending: 'Keine offenen Reviews.',
-    admin_recent_title: 'Zuletzt freigegeben',
-    admin_recent_empty: 'Keine freigegebenen Reviews.',
-    admin_events_title: 'Event-Moderation',
-    admin_events_desc: 'Prüfe ausstehende RSVPs für alle Events.',
-    admin_events_empty: 'Keine ausstehenden Event-RSVPs.',
-    clubs_page_title: 'Clubs',
-    clubs_page_desc: 'Alle Clubs durchsuchen und Details öffnen.',
-    club_submit_title: 'Club vorschlagen',
-    club_submit_desc:
-      'Kennst du einen Club, den wir aufnehmen sollen? Sende die Details zur Prüfung.',
-    club_submit_name_label: 'Clubname',
-    club_submit_city_label: 'Stadt',
-    club_submit_country_label: 'Land',
-    club_submit_website_label: 'Website',
-    club_submit_summary_label: 'Kurzbeschreibung',
-    club_submit_summary_placeholder:
-      'Beschreibe, was diesen Club besonders macht...',
-    club_submit_submit: 'Club senden',
-    club_submit_submitting: 'Senden...',
-    club_submit_signin_required: 'Melde dich an, um einen Club vorzuschlagen.',
-    club_submit_status_pending: 'Club zur Moderation eingereicht.',
-    club_submit_status_error: 'Club konnte nicht gesendet werden.',
-    club_submit_permission_error:
-      'Club-Einreichung durch Firestore-Regeln blockiert.',
-    city_breadcrumb_home: 'Start',
-    city_breadcrumb_clubs: 'Clubs',
-    city_title_desc: 'Clubs und Konstellationen in dieser Stadt.',
-    city_fallback: 'Diese Stadt',
-    city_clubs_title: 'Clubs',
-    city_constellations_title: 'Konstellationen',
-    city_clubs_empty: 'Noch keine Clubs.',
-    city_constellations_empty: 'Noch keine Konstellationen.',
-    club_not_found_title: 'Club nicht gefunden',
-    club_not_found_body: 'Dieser Club wurde nicht gefunden.',
-    club_back: 'Zurück zu den Clubs',
-    club_description: 'Beschreibung',
-    club_info: 'Infos',
-    club_city: 'Stadt',
-    club_country: 'Land',
-    club_date_visited: 'Besuchsdatum',
-    club_dress_code: 'Dresscode',
-    club_party_type: 'Partytyp',
-    club_day_of_week: 'Wochentag',
-    club_website: 'Website',
-    club_visit_site: 'Besuchen',
-    reviews_title: 'Reviews',
-    reviews_desc: 'Reviews und Community-Notizen.',
-    reviews_club_title: 'Club-Reviews',
-    reviews_club_desc: 'Reviews erscheinen nach Moderation.',
-    reviews_none: 'Keine Reviews veröffentlicht.',
-    review_rating_label: 'Bewertung',
-    review_text_label: 'Review',
-    review_text_placeholder: 'Teile deine Erfahrung mit diesem Club...',
-    review_submit: 'Zur Prüfung senden',
-    review_submitting: 'Senden...',
-    review_signin_required: 'Zum Einreichen anmelden.',
-    review_status_pending: 'Review zur Moderation gesendet.',
-    review_status_error: 'Review konnte nicht gesendet werden.',
-    review_permission_error: 'Review durch Firestore-Regeln blockiert.',
-    review_author_anonymous: 'anonym',
-    review_rating_status: 'Bewertung: {rating}/5 · Status: {status}',
-    review_identity_label: 'Veröffentlichen als',
-    review_identity_profile: 'Dein Profil',
-    review_identity_anonymous: 'Anonym',
-    status_pending: 'Ausstehend',
-    status_approved: 'Genehmigt',
-    status_rejected: 'Abgelehnt',
-    status_published: 'Veröffentlicht',
-    rating_option_5: '5 - Exzellent',
-    rating_option_4: '4 - Sehr gut',
-    rating_option_3: '3 - Solide',
-    rating_option_2: '2 - Verbesserungsbedarf',
-    rating_option_1: '1 - Schwach',
-    map_page_title: 'Europa-Clubkarte',
-    map_page_desc: 'Debug-Ansicht der Clubkarte.',
-  },
-  it: {
-    site_tagline: 'Comunità moderne mappate come costellazioni.',
-    nav_users: 'Utenti',
-    nav_constellations: 'Costellazioni',
-    nav_clubs: 'Club',
-    nav_events: 'Eventi',
-    nav_map: 'Mappa',
-    nav_websites: 'Siti',
-    nav_blog: 'Blog',
-    nav_join: 'Unisciti',
-    nav_review: 'Recensioni',
-    nav_admin: 'Admin',
-    user_menu_label: 'Account',
-    user_menu_edit: 'Modifica profilo',
-    user_menu_host: 'Dashboard host',
-    user_menu_signout: 'Esci',
-    profile_page_title: 'Il tuo profilo',
-    profile_page_subtitle: 'Aggiorna i dati e le impostazioni privacy.',
-    profile_save: 'Salva modifiche',
-    profile_saving: 'Salvataggio...',
-    profile_saved: 'Profilo aggiornato.',
-    profile_save_error: 'Impossibile aggiornare il profilo.',
-    profile_signin_prompt: 'Accedi per modificare il profilo.',
-    request_access: 'Richiedi accesso',
-    link_section_title: 'Legami della costellazione',
-    link_section_subtitle:
-      'Invia richieste, conferma il consenso e scegli la visibilità.',
-    link_request_email_label: 'Richiesta via email',
-    link_request_email_placeholder: 'partner@email.com',
-    link_request_type_label: 'Tipo di legame',
-    link_request_send: 'Invia richiesta',
-    link_request_sending: 'Invio...',
-    link_request_status_sent: 'Richiesta inviata.',
-    link_request_status_missing: 'Inserisci un email per inviare la richiesta.',
-    link_request_status_self: 'Non puoi collegarti alla tua email.',
-    link_request_status_not_found: 'Nessun utente trovato.',
-    link_request_status_exists: 'La richiesta esiste già.',
-    link_request_status_error: 'Impossibile inviare la richiesta.',
-    link_requests_incoming_title: 'Richieste in arrivo',
-    link_requests_outgoing_title: 'Richieste inviate',
-    link_requests_confirmed_title: 'Legami confermati',
-    link_requests_empty: 'Nessuna.',
-    link_request_accept: 'Accetta',
-    link_request_decline: 'Rifiuta',
-    link_request_merge_label: 'Unisci visibilità di ricerca',
-    link_request_merge_on: 'Uniti',
-    link_request_merge_off: 'Indipendenti',
-    photo_upload_label: 'Foto profilo',
-    photo_upload_button: 'Carica',
-    photo_upload_success: 'Foto aggiornata.',
-    photo_upload_error: 'Impossibile caricare la foto.',
-    notifications_title: 'Notifiche',
-    notifications_desc: 'Abilita le notifiche per inviti e aggiornamenti.',
-    notifications_enable: 'Abilita notifiche',
-    notifications_disable: 'Disabilita notifiche',
-    notifications_enabled: 'Notifiche abilitate.',
-    notifications_disabled: 'Notifiche disabilitate.',
-    notifications_blocked: 'Notifiche bloccate nel browser.',
-    notifications_missing_key: 'Chiave VAPID mancante.',
-    notifications_error: 'Impossibile aggiornare le notifiche.',
-    verification_title: 'Verifica foto',
-    verification_desc: 'Carica un selfie con la frase di verifica.',
-    verification_phrase_label: 'Frase di verifica',
-    verification_phrase: 'LBS2025',
-    verification_upload_label: 'Foto di verifica',
-    verification_submit: 'Invia verifica',
-    verification_submitting: 'Invio...',
-    verification_status_pending: 'Verifica inviata per revisione.',
-    verification_status_success: 'Verifica aggiornata.',
-    verification_status_error: 'Impossibile inviare la verifica.',
-    verification_admin_title: 'Verifica foto',
-    verification_admin_desc: 'Revisiona i selfie di verifica.',
-    verification_admin_empty: 'Nessuna richiesta.',
-    verification_admin_approve: 'Approva',
-    verification_admin_reject: 'Rifiuta',
-    events_page_title: 'Party & eventi',
-    events_page_desc: 'Eventi in arrivo, cap e stato di approvazione.',
-    event_privacy_label: 'Privacy',
-    event_privacy_public: 'Pubblico',
-    event_privacy_vetted: 'Vaglio',
-    event_privacy_private: 'Privato',
-    event_privacy_notice_public: 'Visibile a tutti. Indirizzo condiviso.',
-    event_privacy_notice_vetted: 'Visibile a tutti. Indirizzo dopo approvazione.',
-    event_privacy_notice_private: 'Solo su invito. Nascosto.',
-    event_address_label: 'Luogo',
-    event_address_hidden: 'Indirizzo nascosto fino all’approvazione.',
-    event_cap_label: 'Capienza',
-    event_cap_men: 'Uomini',
-    event_cap_women: 'Donne',
-    event_cap_couples: 'Coppie',
-    event_rsvp_title: 'RSVP',
-    event_rsvp_desc: 'Scegli una categoria per richiedere un posto.',
-    event_rsvp_category_label: 'Categoria',
-    event_rsvp_submit: 'Invia RSVP',
-    event_rsvp_sending: 'Invio...',
-    event_rsvp_full: 'Categoria piena.',
-    event_rsvp_pending: 'RSVP in attesa.',
-    event_rsvp_approved: 'RSVP approvato.',
-    event_rsvp_declined: 'RSVP rifiutato.',
-    event_rsvp_error: 'Impossibile inviare RSVP.',
-    event_rsvp_signed_out: 'Accedi per RSVP.',
-    event_rsvp_qr_title: 'QR di check-in',
-    event_rsvp_qr_desc: 'Mostra il codice all’ingresso.',
-    event_guest_manager_title: 'Guest Manager',
-    event_guest_manager_desc: 'Valuta gli RSVP e i badge.',
-    event_guest_manager_pending: 'Richieste in attesa',
-    event_guest_manager_approved: 'Ospiti approvati',
-    event_guest_manager_empty: 'Nessun RSVP.',
-    event_guest_action_approve: 'Approva',
-    event_guest_action_decline: 'Rifiuta',
-    event_not_found_title: 'Evento non trovato',
-    event_not_found_body: 'Impossibile trovare questo evento.',
-    event_back: 'Torna agli eventi',
-    event_live_status_label: 'Stato live',
-    event_live_status_open: 'Aperto',
-    event_live_status_full: 'Completo',
-    event_live_status_last_call: 'Ultima chiamata',
-    event_live_update: 'Aggiorna stato',
-    event_live_chat_title: 'Chat live',
-    event_live_chat_placeholder: 'Scrivi un messaggio...',
-    event_live_chat_send: 'Invia',
-    host_dashboard_title: 'Dashboard host',
-    host_dashboard_desc: 'Monitora gli RSVP dei tuoi eventi.',
-    host_dashboard_empty: 'Nessun evento ospitato.',
-    host_dashboard_signin: 'Accedi per vedere gli strumenti host.',
-    footer_tagline: 'Casa della community per utenti, costellazioni, club e storie.',
-    footer_guidelines: 'Linee guida e termini',
-    lang_select_label: 'Seleziona lingua',
-    hero_pill: 'Per creator, club e storie condivise',
-    hero_title: 'Crea una rete viva di persone, club e notti indimenticabili.',
-    hero_lead:
-      'LedBySwing unisce persone, costellazioni e club per storie, recensioni e diari di viaggio.',
-    hero_paragraph:
-      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
-    relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
-    hero_cta_primary: 'Lancia una costellazione',
-    hero_cta_secondary: 'Esplora il grafo',
-    metric_label: 'Utenti attivi',
-    metric_caption: 'In crescita in 12 regioni',
-    register_page_title: 'Crea il tuo account',
-    register_page_subtitle:
-      'Qui crei un account per una sola persona. Coppie o costellazioni potrai aggiungerle più tardi.',
-    auth_title: 'Crea il tuo account',
-    auth_subtitle:
-      'I profili sbloccano recensioni, calendari privati e inviti.',
-    register_kicker: 'Accesso privato alla community',
-    register_heading: 'Costruisci un profilo con intenzione.',
-    register_body:
-      'Ogni account viene verificato. Puoi navigare anonimamente, ma le recensioni richiedono un profilo.',
-    label_display_name: 'Nome visualizzato',
-    label_email: 'Email',
-    label_password: 'Password',
-    label_confirm_password: 'Conferma password',
-    label_birth_date: 'Data di nascita',
-    label_location: 'Località',
-    label_location_lat: 'Latitudine',
-    label_location_lng: 'Longitudine',
-    label_interests: 'Interessi',
-    placeholder_display_name: 'VelvetAtlas',
-    placeholder_email: 'name@email.com',
-    placeholder_password: '8+ caratteri',
-    placeholder_confirm_password: 'Reinserisci la password',
-    placeholder_birth_date: 'AAAA-MM-GG',
-    placeholder_location: 'Città, Paese',
-    placeholder_location_lat: '41.90',
-    placeholder_location_lng: '12.49',
-    placeholder_interests: 'Relazioni aperte, Voyeur, BDSM',
-    interest_tag_1: 'Relazioni aperte',
-    interest_tag_2: 'Voyeur',
-    interest_tag_3: 'BDSM',
-    interest_tag_4: 'Eventi sociali',
-    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
-    consent_privacy: 'Mantieni il profilo privato finché non pubblico.',
-    consent_policy_prefix: 'I have read and agree to the ',
-    consent_policy_link: 'Terms of Service and Community Guidelines',
-    consent_policy_suffix: '.',
-    register_create: 'Crea account',
-    register_creating: 'Creazione...',
-    register_google_cta: 'Crea un account con Google',
-    register_google_hint: "Usa Google per evitare la password. Precompiliamo l'email.",
-    auth_sign_in_google: 'Accedi con Google',
-    auth_sign_out: 'Esci',
-    auth_status_setup: 'Configurazione accesso richiesta',
-    auth_status_config: 'Configurazione accesso richiesta',
-    auth_status_pending: 'I nuovi account vengono verificati prima della pubblicazione',
-    auth_sign_in_missing: 'Enter your email and password to sign in.',
-    auth_sign_in_success: 'Signed in.',
-    auth_sign_in_error: 'Unable to sign in. Please try again.',
-    register_password_mismatch: 'Le password non corrispondono.',
-    register_underage: 'Devi avere almeno 18 anni.',
-    register_status_success: 'Account creato. In attesa di revisione.',
-    register_status_permission:
-      'Account creato, ma il profilo è bloccato dalle regole Firestore.',
-    register_status_error: 'Impossibile creare l’account.',
-    register_expect_label: 'Aspettati',
-    register_expect_text: 'Moderazione attenta e profili verificati.',
-    register_privacy_label: 'Privacy',
-    register_privacy_text: 'Scegli cosa mostrare prima di pubblicare.',
-    register_trust_label: 'Fiducia',
-    register_trust_text: 'Le recensioni sono legate a profili reali.',
-    register_have_account: 'Hai già un account?',
-    register_sign_in: 'Accedi',
-    guidelines_page_title: 'Guidelines & Terms',
-    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
-    terms_title: 'Terms of Service (The Legal Guardrails)',
-    terms_eligibility_title: 'Eligibility & Age Verification',
-    terms_eligibility_item_1:
-      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
-    terms_eligibility_item_2:
-      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
-    terms_content_title: 'Content Ownership & License',
-    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
-    terms_content_item_2:
-      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
-    terms_content_item_3:
-      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
-    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
-    terms_prohibited_item_1:
-      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
-    terms_prohibited_item_2:
-      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
-    terms_liability_title: 'Limitation of Liability',
-    terms_liability_item_1:
-      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
-    terms_liability_item_2:
-      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
-    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
-    guidelines_core_title: 'The C.O.R.E. Principles',
-    guidelines_core_item_1:
-      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
-    guidelines_core_item_2:
-      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
-    guidelines_core_item_3:
-      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
-    guidelines_core_item_4:
-      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
-    guidelines_constellation_title: 'Constellation Etiquette',
-    guidelines_constellation_item_1:
-      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
-    guidelines_constellation_item_2:
-      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
-    guidelines_event_title: 'Event Safety',
-    guidelines_event_item_1:
-      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
-    guidelines_event_item_2:
-      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
-    users_title: 'Utenti',
-    users_subtitle: 'Profili, ruoli e attività condivisa alimentano le costellazioni.',
-    users_card_profiles_title: 'Profili',
-    users_card_profiles_body: 'Profili con ruoli, pronomi e interessi.',
-    users_card_profiles_item1: 'Tag personalizzati',
-    users_card_profiles_item2: 'Stato disponibilità',
-    users_card_profiles_item3: 'Interessi condivisi',
-    users_card_trust_title: 'Fiducia',
-    users_card_trust_body: 'La community cresce quando si condividono storie.',
-    users_card_trust_item1: 'Apprezzamenti',
-    users_card_trust_item2: 'Presenza eventi',
-    users_card_trust_item3: 'Impatto delle storie',
-    users_card_privacy_title: 'Scelte di privacy',
-    users_card_privacy_body: 'Scegli la visibilità nei club e costellazioni.',
-    users_card_privacy_item1: 'Visibilità per club',
-    users_card_privacy_item2: 'Controllo storie',
-    users_card_privacy_item3: 'Mascheramento attività',
-    const_title: 'Costellazioni',
-    const_subtitle: 'Ogni costellazione riunisce due o più utenti.',
-    const_card_title: 'Cluster collaborativi',
-    const_card_body:
-      'Costruisci costellazioni per mentoring, co‑creazione o lanci.',
-    const_tag1: '2+ utenti',
-    const_tag2: 'Missione condivisa',
-    const_tag3: 'Durata limitata',
-    clubs_title: 'Club',
-    clubs_subtitle: 'Spazi indipendenti con eventi, post e costellazioni.',
-    clubs_card1_title: 'Percorsi membership',
-    clubs_card1_body: 'Accessi a livelli per ospiti, membri e ambassador.',
-    clubs_card1_item1: 'Ingressi su invito',
-    clubs_card1_item2: 'Check-in eventi',
-    clubs_card1_item3: 'Heatmap retention',
-    clubs_card2_title: 'Spazi club',
-    clubs_card2_body: 'Siti dedicati con calendari, gallerie e post.',
-    clubs_card2_item1: 'Multi-admin',
-    clubs_card2_item2: 'Preset temi',
-    clubs_card2_item3: 'Pubblicazione rapida',
-    clubs_card3_title: 'Crescita condivisa',
-    clubs_card3_body: 'Vedi cosa cresce da ogni club.',
-    clubs_card3_item1: 'Attribuzione storie',
-    clubs_card3_item2: 'Connessioni club',
-    clubs_card3_item3: 'Cohort di crescita',
-    clubs_highlights_title: 'Club in evidenza',
-    clubs_highlights_body: 'Club consigliati per iniziare.',
-    clubs_loading: 'Caricamento...',
-    map_title: 'Mappa club Europa',
-    map_desc: 'Vedi dove si incontra la community in Europa.',
-    map_aria: 'OpenStreetMap d’Europa',
-    map_pin_open: 'Apri {name}',
-    websites_title: 'Siti',
-    websites_desc: 'Lancia siti di brand con profili e storie.',
-    websites_card1_title: 'Pagine vive',
-    websites_card1_body: 'Evidenzia calendari, team e costellazioni.',
-    websites_card1_item1: 'Template adattivi',
-    websites_card1_item2: 'Copy multilingue',
-    websites_card1_item3: 'SEO-friendly',
-    websites_card2_title: 'Visibilità',
-    websites_card2_body: 'Mostra i club e rendi le storie scopribili.',
-    websites_card2_item1: 'Calendari condivisi',
-    websites_card2_item2: 'Archivi storie',
-    websites_card2_item3: 'Highlights community',
-    websites_card3_title: 'Gestione',
-    websites_card3_body: 'Allinea approvazioni e pubblicazioni.',
-    websites_card3_item1: 'Flussi editoriali',
-    websites_card3_item2: 'Ruoli membri',
-    websites_card3_item3: 'Cronologia modifiche',
-    website_visit: 'Visita sito',
-    blog_title: 'Post del blog',
-    blog_desc: 'Racconti legati a utenti, costellazioni e viaggi.',
-    blog_loading: 'Caricamento archivio...',
-    moderation_title: 'Coda recensioni',
-    moderation_desc: 'Nuovi profili e recensioni attendono la revisione.',
-    moderation_pending_label: 'Recensioni in attesa',
-    moderation_pending_desc: 'Approva o rifiuta prima della pubblicazione.',
-    moderation_queue_label: 'Coda',
-    moderation_queue_empty: 'Nessuna recensione in coda.',
-    moderation_admin_only_title: 'Solo admin',
-    moderation_admin_only_desc: 'Accedi come admin per moderare.',
-    moderation_open_admin: 'Apri pannello admin',
-    admin_title: 'Pannello admin',
-    admin_subtitle: 'Modera le recensioni e pubblica con fiducia.',
-    admin_access_denied_title: 'Accesso negato',
-    admin_access_denied_body: 'Serve un account admin.',
-    admin_back_home: 'Torna alla home',
-    admin_pending_title: 'Recensioni in attesa',
-    admin_pending_desc: 'Recensioni in attesa di decisione.',
-    admin_approved_title: 'Recensioni approvate',
-    admin_approved_desc: 'Recensioni pubblicate di recente.',
-    admin_queue_title: 'Coda moderazione',
-    admin_action_approve: 'Approva',
-    admin_action_reject: 'Rifiuta',
-    admin_no_pending: 'Nessuna recensione in attesa.',
-    admin_recent_title: 'Approvate di recente',
-    admin_recent_empty: 'Nessuna recensione approvata.',
-    admin_events_title: 'Moderazione eventi',
-    admin_events_desc: 'Rivedi le RSVP in sospeso per tutti gli eventi.',
-    admin_events_empty: 'Nessuna RSVP evento in sospeso.',
-    clubs_page_title: 'Club',
-    clubs_page_desc: 'Sfoglia i club e apri i dettagli.',
-    club_submit_title: 'Invia un club',
-    club_submit_desc:
-      'Conosci un club da aggiungere? Invia i dettagli per la revisione.',
-    club_submit_name_label: 'Nome del club',
-    club_submit_city_label: 'Città',
-    club_submit_country_label: 'Paese',
-    club_submit_website_label: 'Sito',
-    club_submit_summary_label: 'Breve descrizione',
-    club_submit_summary_placeholder:
-      'Racconta cosa rende speciale questo club...',
-    club_submit_submit: 'Invia il club',
-    club_submit_submitting: 'Invio...',
-    club_submit_signin_required: 'Accedi per inviare un club.',
-    club_submit_status_pending: 'Club inviato per moderazione.',
-    club_submit_status_error: 'Impossibile inviare il club.',
-    club_submit_permission_error:
-      'Invio del club bloccato dalle regole Firestore.',
-    city_breadcrumb_home: 'Home',
-    city_breadcrumb_clubs: 'Club',
-    city_title_desc: 'Club e costellazioni legati a questa città.',
-    city_fallback: 'Questa città',
-    city_clubs_title: 'Club',
-    city_constellations_title: 'Costellazioni',
-    city_clubs_empty: 'Nessun club ancora.',
-    city_constellations_empty: 'Nessuna costellazione ancora.',
-    club_not_found_title: 'Club non trovato',
-    club_not_found_body: 'Non abbiamo trovato quel club.',
-    club_back: 'Torna ai club',
-    club_description: 'Descrizione',
-    club_info: 'Informazioni utili',
-    club_city: 'Città',
-    club_country: 'Paese',
-    club_date_visited: 'Data visita',
-    club_dress_code: 'Dress code',
-    club_party_type: 'Tipo di party',
-    club_day_of_week: 'Giorno della settimana',
-    club_website: 'Sito',
-    club_visit_site: 'Visita',
-    reviews_title: 'Recensioni',
-    reviews_desc: 'Recensioni complete e note della community.',
-    reviews_club_title: 'Recensioni del club',
-    reviews_club_desc: 'Le recensioni appaiono dopo la moderazione.',
-    reviews_none: 'Nessuna recensione pubblicata.',
-    review_rating_label: 'Valutazione',
-    review_text_label: 'Recensione',
-    review_text_placeholder: 'Racconta la tua esperienza con questo club...',
-    review_submit: 'Invia per revisione',
-    review_submitting: 'Invio...',
-    review_signin_required: 'Accedi per inviare una recensione.',
-    review_status_pending: 'Recensione inviata per moderazione.',
-    review_status_error: 'Impossibile inviare la recensione.',
-    review_permission_error: 'Recensione bloccata dalle regole Firestore.',
-    review_author_anonymous: 'anonimo',
-    review_rating_status: 'Valutazione: {rating}/5 · Stato: {status}',
-    review_identity_label: 'Pubblica come',
-    review_identity_profile: 'Il tuo profilo',
-    review_identity_anonymous: 'Anonimo',
-    status_pending: 'In attesa',
-    status_approved: 'Approvata',
-    status_rejected: 'Rifiutata',
-    status_published: 'Pubblicata',
-    rating_option_5: '5 - Eccellente',
-    rating_option_4: '4 - Ottimo',
-    rating_option_3: '3 - Buono',
-    rating_option_2: '2 - Da migliorare',
-    rating_option_1: '1 - Scarso',
-    map_page_title: 'Mappa club Europa',
-    map_page_desc: 'Vista debug della mappa dei club.',
-  },
-  es: {
-    site_tagline: 'Comunidades modernas mapeadas como constelaciones.',
-    nav_users: 'Usuarios',
-    nav_constellations: 'Constelaciones',
-    nav_clubs: 'Clubes',
-    nav_events: 'Eventos',
-    nav_map: 'Mapa',
-    nav_websites: 'Sitios',
-    nav_blog: 'Blog',
-    nav_join: 'Unirse',
-    nav_review: 'Reseñas',
-    nav_admin: 'Admin',
-    user_menu_label: 'Cuenta',
-    user_menu_edit: 'Editar perfil',
-    user_menu_host: 'Panel de anfitrión',
-    user_menu_signout: 'Cerrar sesión',
-    profile_page_title: 'Tu perfil',
-    profile_page_subtitle: 'Actualiza tus datos y la privacidad.',
-    profile_save: 'Guardar cambios',
-    profile_saving: 'Guardando...',
-    profile_saved: 'Perfil actualizado.',
-    profile_save_error: 'No se pudo actualizar el perfil.',
-    profile_signin_prompt: 'Inicia sesión para editar tu perfil.',
-    request_access: 'Solicitar acceso',
-    link_section_title: 'Vínculos de constelación',
-    link_section_subtitle:
-      'Envía solicitudes, confirma consentimiento y elige visibilidad.',
-    link_request_email_label: 'Solicitud por email',
-    link_request_email_placeholder: 'partner@email.com',
-    link_request_type_label: 'Tipo de vínculo',
-    link_request_send: 'Enviar solicitud',
-    link_request_sending: 'Enviando...',
-    link_request_status_sent: 'Solicitud enviada.',
-    link_request_status_missing: 'Ingresa un email para enviar la solicitud.',
-    link_request_status_self: 'No puedes vincular tu propio email.',
-    link_request_status_not_found: 'No se encontró usuario.',
-    link_request_status_exists: 'La solicitud ya existe.',
-    link_request_status_error: 'No se pudo enviar la solicitud.',
-    link_requests_incoming_title: 'Solicitudes entrantes',
-    link_requests_outgoing_title: 'Solicitudes enviadas',
-    link_requests_confirmed_title: 'Vínculos confirmados',
-    link_requests_empty: 'Ninguno.',
-    link_request_accept: 'Aceptar',
-    link_request_decline: 'Rechazar',
-    link_request_merge_label: 'Unir visibilidad de búsqueda',
-    link_request_merge_on: 'Unidos',
-    link_request_merge_off: 'Independientes',
-    photo_upload_label: 'Foto de perfil',
-    photo_upload_button: 'Subir',
-    photo_upload_success: 'Foto actualizada.',
-    photo_upload_error: 'No se pudo subir la foto.',
-    notifications_title: 'Notificaciones',
-    notifications_desc: 'Activa notificaciones para invitaciones y cambios.',
-    notifications_enable: 'Activar notificaciones',
-    notifications_disable: 'Desactivar notificaciones',
-    notifications_enabled: 'Notificaciones activadas.',
-    notifications_disabled: 'Notificaciones desactivadas.',
-    notifications_blocked: 'Notificaciones bloqueadas en el navegador.',
-    notifications_missing_key: 'Falta la clave VAPID.',
-    notifications_error: 'No se pudieron actualizar las notificaciones.',
-    verification_title: 'Verificacion de foto',
-    verification_desc: 'Sube un selfie con la frase de verificacion.',
-    verification_phrase_label: 'Frase de verificacion',
-    verification_phrase: 'LBS2025',
-    verification_upload_label: 'Foto de verificacion',
-    verification_submit: 'Enviar verificacion',
-    verification_submitting: 'Enviando...',
-    verification_status_pending: 'Verificacion enviada para revision.',
-    verification_status_success: 'Verificacion actualizada.',
-    verification_status_error: 'No se pudo enviar la verificacion.',
-    verification_admin_title: 'Verificacion de foto',
-    verification_admin_desc: 'Revisa los selfies de verificacion.',
-    verification_admin_empty: 'Sin solicitudes.',
-    verification_admin_approve: 'Aprobar',
-    verification_admin_reject: 'Rechazar',
-    events_page_title: 'Fiestas y eventos',
-    events_page_desc: 'Eventos próximos, cupos y estado de aprobación.',
-    event_privacy_label: 'Privacidad',
-    event_privacy_public: 'Público',
-    event_privacy_vetted: 'Verificado',
-    event_privacy_private: 'Privado',
-    event_privacy_notice_public: 'Visible para todos. Dirección compartida.',
-    event_privacy_notice_vetted: 'Visible para todos. Dirección tras aprobación.',
-    event_privacy_notice_private: 'Solo con invitación. No listado.',
-    event_address_label: 'Ubicación',
-    event_address_hidden: 'Dirección oculta hasta aprobación.',
-    event_cap_label: 'Cupo',
-    event_cap_men: 'Hombres',
-    event_cap_women: 'Mujeres',
-    event_cap_couples: 'Parejas',
-    event_rsvp_title: 'RSVP',
-    event_rsvp_desc: 'Elige una categoría para solicitar cupo.',
-    event_rsvp_category_label: 'Categoría',
-    event_rsvp_submit: 'Enviar RSVP',
-    event_rsvp_sending: 'Enviando...',
-    event_rsvp_full: 'Categoría llena.',
-    event_rsvp_pending: 'RSVP pendiente.',
-    event_rsvp_approved: 'RSVP aprobado.',
-    event_rsvp_declined: 'RSVP rechazado.',
-    event_rsvp_error: 'No se pudo enviar RSVP.',
-    event_rsvp_signed_out: 'Inicia sesión para RSVP.',
-    event_rsvp_qr_title: 'QR de entrada',
-    event_rsvp_qr_desc: 'Muestra el código en la puerta.',
-    event_guest_manager_title: 'Gestor de invitados',
-    event_guest_manager_desc: 'Revisa RSVPs y badges de confianza.',
-    event_guest_manager_pending: 'Solicitudes pendientes',
-    event_guest_manager_approved: 'Invitados aprobados',
-    event_guest_manager_empty: 'Sin RSVPs.',
-    event_guest_action_approve: 'Aprobar',
-    event_guest_action_decline: 'Rechazar',
-    event_not_found_title: 'Evento no encontrado',
-    event_not_found_body: 'No pudimos encontrar este evento.',
-    event_back: 'Volver a eventos',
-    event_live_status_label: 'Estado en vivo',
-    event_live_status_open: 'Abierto',
-    event_live_status_full: 'Lleno',
-    event_live_status_last_call: 'Ultimo llamado',
-    event_live_update: 'Actualizar estado',
-    event_live_chat_title: 'Chat en vivo',
-    event_live_chat_placeholder: 'Escribe un mensaje...',
-    event_live_chat_send: 'Enviar',
-    host_dashboard_title: 'Panel de anfitrión',
-    host_dashboard_desc: 'Sigue los RSVPs de tus eventos.',
-    host_dashboard_empty: 'Sin eventos como anfitrión.',
-    host_dashboard_signin: 'Inicia sesión para ver herramientas.',
-    footer_tagline: 'Hogar de la comunidad para usuarios, constelaciones, clubes e historias.',
-    footer_guidelines: 'Guías y términos',
-    lang_select_label: 'Seleccionar idioma',
-    hero_pill: 'Para creadores, clubes e historias compartidas',
-    hero_title: 'Crea una red viva de personas, clubes y noches inolvidables.',
-    hero_lead:
-      'LedBySwing conecta personas, constelaciones y clubes para historias, reseñas y diarios de viaje.',
-    hero_paragraph:
-      'Welcome to the next evolution of ethical non-monogamy. LedBySwing is a community-built platform designed for the way we actually live. Whether you are a solo explorer, part of an established couple, or a member of a complex constellation, we provide the tools to connect, organize, and thrive. No paywalls, no hidden fees—just an open, adult space dedicated to authentic connection and unforgettable events.',
-    relationships_title: 'Your Relationships Are Unique. Your Platform Should Be Too.',
-    relationships_body:
-      'Traditional sites stop at "Single" or "Couple." We go further. From managing intricate polycules to hosting private events, LedBySwing is designed to handle the beautiful complexity of modern ethical non-monogamy. Bring your constellation home.',
-    hero_cta_primary: 'Lanzar una constelación',
-    hero_cta_secondary: 'Explorar la red',
-    metric_label: 'Usuarios activos',
-    metric_caption: 'Creciendo en 12 regiones',
-    register_page_title: 'Crea tu cuenta',
-    register_page_subtitle:
-      'Esto crea una cuenta individual. Las parejas o constelaciones se pueden añadir más adelante.',
-    auth_title: 'Crea tu cuenta',
-    auth_subtitle:
-      'Los perfiles desbloquean reseñas, calendarios privados e invitaciones.',
-    register_kicker: 'Acceso privado a la comunidad',
-    register_heading: 'Construye un perfil con intención.',
-    register_body:
-      'Cada cuenta se revisa. Puedes navegar anónimamente, pero las reseñas requieren perfil.',
-    label_display_name: 'Nombre visible',
-    label_email: 'Email',
-    label_password: 'Contraseña',
-    label_confirm_password: 'Confirmar contraseña',
-    label_birth_date: 'Fecha de nacimiento',
-    label_location: 'Ubicación',
-    label_location_lat: 'Latitud',
-    label_location_lng: 'Longitud',
-    label_interests: 'Intereses',
-    placeholder_display_name: 'VelvetAtlas',
-    placeholder_email: 'name@email.com',
-    placeholder_password: '8+ caracteres',
-    placeholder_confirm_password: 'Repite la contraseña',
-    placeholder_birth_date: 'AAAA-MM-DD',
-    placeholder_location: 'Ciudad, país',
-    placeholder_location_lat: '40.41',
-    placeholder_location_lng: '-3.70',
-    placeholder_interests: 'Relaciones abiertas, Voyeur, BDSM',
-    interest_tag_1: 'Relaciones abiertas',
-    interest_tag_2: 'Voyeur',
-    interest_tag_3: 'BDSM',
-    interest_tag_4: 'Eventos sociales',
-    consent_age: 'I confirm I am 18+ (or the legal age of majority in my jurisdiction).',
-    consent_privacy: 'Mantener mi perfil privado hasta publicarlo.',
-    consent_policy_prefix: 'I have read and agree to the ',
-    consent_policy_link: 'Terms of Service and Community Guidelines',
-    consent_policy_suffix: '.',
-    register_create: 'Crear cuenta',
-    register_creating: 'Creando...',
-    register_google_cta: 'Crear cuenta con Google',
-    register_google_hint:
-      'Usa Google para evitar la contraseña. Completamos el correo electrónico.',
-    auth_sign_in_google: 'Iniciar sesión con Google',
-    auth_sign_out: 'Cerrar sesión',
-    auth_status_setup: 'Se requiere configuración de acceso',
-    auth_status_config: 'Se requiere configuración de acceso',
-    auth_status_pending: 'Las nuevas cuentas se revisan antes de publicarse',
-    auth_sign_in_missing: 'Enter your email and password to sign in.',
-    auth_sign_in_success: 'Signed in.',
-    auth_sign_in_error: 'Unable to sign in. Please try again.',
-    register_password_mismatch: 'Las contraseñas no coinciden.',
-    register_underage: 'Debes tener al menos 18 años.',
-    register_status_success: 'Cuenta creada. Pendiente de revisión.',
-    register_status_permission:
-      'Cuenta creada, pero el perfil está bloqueado por reglas Firestore.',
-    register_status_error: 'No se pudo crear la cuenta.',
-    register_expect_label: 'Espera',
-    register_expect_text: 'Moderación cuidada y perfiles verificados.',
-    register_privacy_label: 'Privacidad',
-    register_privacy_text: 'Elige qué mostrar antes de publicar.',
-    register_trust_label: 'Confianza',
-    register_trust_text: 'Las reseñas se asocian a perfiles reales.',
-    register_have_account: '¿Ya tienes cuenta?',
-    register_sign_in: 'Iniciar sesión',
-    guidelines_page_title: 'Guidelines & Terms',
-    guidelines_page_subtitle: 'Please read these policies before joining or hosting events.',
-    terms_title: 'Terms of Service (The Legal Guardrails)',
-    terms_eligibility_title: 'Eligibility & Age Verification',
-    terms_eligibility_item_1:
-      '18+ requirement: You must be at least 18 years old (or the legal age of majority in your jurisdiction) to access this site.',
-    terms_eligibility_item_2:
-      'Verification: We may require age assurance or ID matching to prevent underage access, especially before allowing participation in events.',
-    terms_content_title: 'Content Ownership & License',
-    terms_content_item_1: 'Your content: You retain ownership of the photos and text you upload.',
-    terms_content_item_2:
-      'Our license: By posting content, you grant us a non-exclusive, royalty-free license to host and display it for the purpose of operating the service.',
-    terms_content_item_3:
-      'Copyright (DMCA): We respect intellectual property. If you believe your work has been copied, use our designated takedown process.',
-    terms_prohibited_title: 'Prohibited Content & Illegal Acts',
-    terms_prohibited_item_1:
-      'Zero tolerance: We strictly prohibit facilitation of sex trafficking (FOSTA-SESTA compliance) or any non-consensual sexual content.',
-    terms_prohibited_item_2:
-      'Illegal acts: Using the platform to promote illegal drugs, violence, or harm is grounds for immediate termination.',
-    terms_liability_title: 'Limitation of Liability',
-    terms_liability_item_1:
-      'As-is service: LedBySwing is provided as-is without warranties of uptime or performance.',
-    terms_liability_item_2:
-      'Social interaction: We are not responsible for the behavior of users at offline events organized through the site.',
-    guidelines_title: 'Community Guidelines (The Vibe & Ethics)',
-    guidelines_core_title: 'The C.O.R.E. Principles',
-    guidelines_core_item_1:
-      'Consent: Verbal, active, and enthusiastic consent is mandatory for all interactions, both digital and physical.',
-    guidelines_core_item_2:
-      'Openness: We are an inclusive space. We welcome all genders, orientations, and relationship structures (monogamous-ish to complex polycules).',
-    guidelines_core_item_3:
-      'Respect: Treat others with dignity. Harassment, hunting, or aggressive behavior is not tolerated.',
-    guidelines_core_item_4:
-      'Ethics: We value transparency. Always be honest about your relationship status and the boundaries of your constellation.',
-    guidelines_constellation_title: 'Constellation Etiquette',
-    guidelines_constellation_item_1:
-      'Linked profiles: When linking accounts into a constellation, ensure all parties have consented to being displayed together.',
-    guidelines_constellation_item_2:
-      "Privacy: Never share another member's real-world identity or private photos without explicit permission.",
-    guidelines_event_title: 'Event Safety',
-    guidelines_event_item_1:
-      'Host rights: Event organizers have the right to set their own vetting requirements (e.g., ID checks or references) for private gatherings.',
-    guidelines_event_item_2:
-      'Reporting: If you witness unsafe behavior at an event or on the site, use our Flag tool. We prioritize reports involving non-consensual behavior.',
-    users_title: 'Usuarios',
-    users_subtitle: 'Perfiles, roles y actividad compartida alimentan constelaciones.',
-    users_card_profiles_title: 'Perfiles',
-    users_card_profiles_body: 'Perfiles con roles, pronombres e intereses.',
-    users_card_profiles_item1: 'Etiquetas personalizadas',
-    users_card_profiles_item2: 'Estado de disponibilidad',
-    users_card_profiles_item3: 'Intereses compartidos',
-    users_card_trust_title: 'Confianza comunitaria',
-    users_card_trust_body: 'El impulso crece cuando se comparten historias.',
-    users_card_trust_item1: 'Recomendaciones',
-    users_card_trust_item2: 'Asistencia a eventos',
-    users_card_trust_item3: 'Impacto de historias',
-    users_card_privacy_title: 'Opciones de privacidad',
-    users_card_privacy_body: 'Elige tu visibilidad en clubes y constelaciones.',
-    users_card_privacy_item1: 'Visibilidad por club',
-    users_card_privacy_item2: 'Control de historias',
-    users_card_privacy_item3: 'Ocultar actividad',
-    const_title: 'Constelaciones',
-    const_subtitle: 'Cada constelación reúne dos o más usuarios.',
-    const_card_title: 'Clusters colaborativos',
-    const_card_body:
-      'Crea constelaciones para mentoría, co‑creación o lanzamientos.',
-    const_tag1: '2+ usuarios',
-    const_tag2: 'Misión compartida',
-    const_tag3: 'Tiempo limitado',
-    clubs_title: 'Clubes',
-    clubs_subtitle: 'Espacios independientes con eventos y publicaciones.',
-    clubs_card1_title: 'Rutas de membresía',
-    clubs_card1_body: 'Accesos por niveles para invitados, miembros y embajadores.',
-    clubs_card1_item1: 'Entradas por invitación',
-    clubs_card1_item2: 'Check-in de eventos',
-    clubs_card1_item3: 'Mapas de retención',
-    clubs_card2_title: 'Espacios de club',
-    clubs_card2_body: 'Sitios de clubes con calendarios, galerías y posts.',
-    clubs_card2_item1: 'Multi-admin',
-    clubs_card2_item2: 'Temas predefinidos',
-    clubs_card2_item3: 'Publicación rápida',
-    clubs_card3_title: 'Crecimiento compartido',
-    clubs_card3_body: 'Mira qué crece de cada club.',
-    clubs_card3_item1: 'Atribución de historias',
-    clubs_card3_item2: 'Conexiones de club',
-    clubs_card3_item3: 'Cohortes de crecimiento',
-    clubs_highlights_title: 'Clubs destacados',
-    clubs_highlights_body: 'Clubs recomendados para empezar.',
-    clubs_loading: 'Cargando...',
-    map_title: 'Mapa de clubes de Europa',
-    map_desc: 'Ver dónde se reúne la comunidad en Europa.',
-    map_aria: 'OpenStreetMap de Europa',
-    map_pin_open: 'Abrir {name}',
-    websites_title: 'Sitios',
-    websites_desc: 'Lanza sitios de marca con perfiles e historias.',
-    websites_card1_title: 'Páginas vivas',
-    websites_card1_body: 'Destaca calendarios, equipos y constelaciones.',
-    websites_card1_item1: 'Plantillas adaptativas',
-    websites_card1_item2: 'Texto multilingüe',
-    websites_card1_item3: 'Amigable con SEO',
-    websites_card2_title: 'Visibilidad',
-    websites_card2_body: 'Muestra clubes y mantiene historias visibles.',
-    websites_card2_item1: 'Calendarios compartidos',
-    websites_card2_item2: 'Archivo de historias',
-    websites_card2_item3: 'Destacados comunitarios',
-    websites_card3_title: 'Gestión',
-    websites_card3_body: 'Alinea aprobación y publicación.',
-    websites_card3_item1: 'Flujos editoriales',
-    websites_card3_item2: 'Roles de miembros',
-    websites_card3_item3: 'Historial de edición',
-    website_visit: 'Visitar sitio',
-    blog_title: 'Entradas del blog',
-    blog_desc: 'Historias ligadas a usuarios, constelaciones y viajes.',
-    blog_loading: 'Cargando archivo...',
-    moderation_title: 'Cola de revisión',
-    moderation_desc: 'Nuevos perfiles y reseñas esperan revisión.',
-    moderation_pending_label: 'Reseñas pendientes',
-    moderation_pending_desc: 'Aprueba o rechaza antes de publicar.',
-    moderation_queue_label: 'Cola',
-    moderation_queue_empty: 'No hay reseñas en la cola.',
-    moderation_admin_only_title: 'Solo admins',
-    moderation_admin_only_desc: 'Inicia sesión como admin para moderar.',
-    moderation_open_admin: 'Abrir panel admin',
-    admin_title: 'Panel admin',
-    admin_subtitle: 'Modera reseñas y publica con confianza.',
-    admin_access_denied_title: 'Acceso denegado',
-    admin_access_denied_body: 'Necesitas una cuenta admin.',
-    admin_back_home: 'Volver al inicio',
-    admin_pending_title: 'Reseñas pendientes',
-    admin_pending_desc: 'Reseñas esperando decisión.',
-    admin_approved_title: 'Reseñas aprobadas',
-    admin_approved_desc: 'Reseñas publicadas recientemente.',
-    admin_queue_title: 'Cola de moderación',
-    admin_action_approve: 'Aprobar',
-    admin_action_reject: 'Rechazar',
-    admin_no_pending: 'No hay reseñas pendientes.',
-    admin_recent_title: 'Aprobadas recientemente',
-    admin_recent_empty: 'No hay reseñas aprobadas.',
-    admin_events_title: 'Moderacion de eventos',
-    admin_events_desc: 'Revisa las RSVP pendientes de todos los eventos.',
-    admin_events_empty: 'No hay RSVP de eventos pendientes.',
-    clubs_page_title: 'Clubes',
-    clubs_page_desc: 'Explora clubes y abre los detalles.',
-    club_submit_title: 'Enviar un club',
-    club_submit_desc:
-      '¿Conoces un club que deberíamos añadir? Envía los detalles para revisión.',
-    club_submit_name_label: 'Nombre del club',
-    club_submit_city_label: 'Ciudad',
-    club_submit_country_label: 'País',
-    club_submit_website_label: 'Sitio',
-    club_submit_summary_label: 'Descripción corta',
-    club_submit_summary_placeholder: 'Cuenta qué hace especial a este club...',
-    club_submit_submit: 'Enviar club',
-    club_submit_submitting: 'Enviando...',
-    club_submit_signin_required: 'Inicia sesión para enviar un club.',
-    club_submit_status_pending: 'Club enviado para moderación.',
-    club_submit_status_error: 'No se pudo enviar el club.',
-    club_submit_permission_error:
-      'Envío de club bloqueado por reglas Firestore.',
-    city_breadcrumb_home: 'Inicio',
-    city_breadcrumb_clubs: 'Clubes',
-    city_title_desc: 'Clubes y constelaciones en esta ciudad.',
-    city_fallback: 'Esta ciudad',
-    city_clubs_title: 'Clubes',
-    city_constellations_title: 'Constelaciones',
-    city_clubs_empty: 'No hay clubes aún.',
-    city_constellations_empty: 'No hay constelaciones aún.',
-    club_not_found_title: 'Club no encontrado',
-    club_not_found_body: 'No pudimos encontrar ese club.',
-    club_back: 'Volver a clubes',
-    club_description: 'Descripción',
-    club_info: 'Información útil',
-    club_city: 'Ciudad',
-    club_country: 'País',
-    club_date_visited: 'Fecha de visita',
-    club_dress_code: 'Dress code',
-    club_party_type: 'Tipo de fiesta',
-    club_day_of_week: 'Día de la semana',
-    club_website: 'Sitio',
-    club_visit_site: 'Visitar',
-    reviews_title: 'Reseñas',
-    reviews_desc: 'Reseñas completas y notas de la comunidad.',
-    reviews_club_title: 'Reseñas del club',
-    reviews_club_desc: 'Las reseñas se muestran tras la moderación.',
-    reviews_none: 'No hay reseñas publicadas.',
-    review_rating_label: 'Calificación',
-    review_text_label: 'Reseña',
-    review_text_placeholder: 'Comparte tu experiencia con este club...',
-    review_submit: 'Enviar para revisión',
-    review_submitting: 'Enviando...',
-    review_signin_required: 'Inicia sesión para enviar una reseña.',
-    review_status_pending: 'Reseña enviada para moderación.',
-    review_status_error: 'No se pudo enviar la reseña.',
-    review_permission_error: 'Reseña bloqueada por reglas Firestore.',
-    review_author_anonymous: 'anónimo',
-    review_rating_status: 'Calificación: {rating}/5 · Estado: {status}',
-    review_identity_label: 'Publicar como',
-    review_identity_profile: 'Tu perfil',
-    review_identity_anonymous: 'Anónimo',
-    status_pending: 'Pendiente',
-    status_approved: 'Aprobada',
-    status_rejected: 'Rechazada',
-    status_published: 'Publicada',
-    rating_option_5: '5 - Excelente',
-    rating_option_4: '4 - Muy bien',
-    rating_option_3: '3 - Correcto',
-    rating_option_2: '2 - A mejorar',
-    rating_option_1: '1 - Malo',
-    map_page_title: 'Mapa de clubes de Europa',
-    map_page_desc: 'Vista de depuración del mapa de clubes.',
-  },
-} as const
+const revealSafetyMedia = (event: MouseEvent<HTMLElement>) => {
+  const target = event.currentTarget
+  target.classList.add('user-media--reveal')
+  window.setTimeout(() => target.classList.remove('user-media--reveal'), 2000)
+}
 
-const getCopy = (lang: Lang) => copy[lang] ?? copy.en
-
+const JsonLd = ({ data }: { data: Record<string, unknown> }) => (
+  <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
+)
 const getLocalizedText = (value: LocalizedText | string, lang: Lang) => {
   if (typeof value === 'string') {
     return value
@@ -2900,16 +146,218 @@ const getLocalizedText = (value: LocalizedText | string, lang: Lang) => {
   return value[lang] ?? value.en ?? ''
 }
 
+const coerceLocalizedText = (value: unknown): LocalizedText | string => {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (!value || typeof value !== 'object') {
+    return ''
+  }
+  const record = value as Record<string, unknown>
+  const localized: LocalizedText = {}
+  Object.entries(record).forEach(([key, entry]) => {
+    if (typeof entry === 'string') {
+      localized[key] = entry
+    }
+  })
+  return localized
+}
+
 const getLocalizedList = (
   values: Array<LocalizedText | string>,
   lang: Lang
 ) => values.map((value) => getLocalizedText(value, lang))
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+
+const renderMarkdown = (value: string) => {
+  const lines = escapeHtml(value).split(/\r?\n/)
+  const output: string[] = []
+  let inList = false
+  let inCode = false
+  let codeLines: string[] = []
+
+  const flushList = () => {
+    if (inList) {
+      output.push('</ul>')
+      inList = false
+    }
+  }
+
+  const flushCode = () => {
+    if (inCode) {
+      output.push(`<pre><code>${codeLines.join('\n')}</code></pre>`)
+      codeLines = []
+      inCode = false
+    }
+  }
+
+  const formatInline = (text: string) =>
+    text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+
+  lines.forEach((rawLine) => {
+    if (rawLine.trim().startsWith('```')) {
+      if (inCode) {
+        flushCode()
+      } else {
+        flushList()
+        inCode = true
+      }
+      return
+    }
+
+    if (inCode) {
+      codeLines.push(rawLine)
+      return
+    }
+
+    const line = rawLine.trim()
+    if (!line) {
+      flushList()
+      return
+    }
+
+    if (line.startsWith('### ')) {
+      flushList()
+      output.push(`<h3>${formatInline(line.slice(4))}</h3>`)
+      return
+    }
+
+    if (line.startsWith('## ')) {
+      flushList()
+      output.push(`<h2>${formatInline(line.slice(3))}</h2>`)
+      return
+    }
+
+    if (line.startsWith('# ')) {
+      flushList()
+      output.push(`<h1>${formatInline(line.slice(2))}</h1>`)
+      return
+    }
+
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      if (!inList) {
+        output.push('<ul>')
+        inList = true
+      }
+      output.push(`<li>${formatInline(line.slice(2))}</li>`)
+      return
+    }
+
+    flushList()
+    output.push(`<p>${formatInline(line)}</p>`)
+  })
+
+  flushCode()
+  flushList()
+
+  return output.join('\n')
+}
+
+const parseBlogPost = (data: Record<string, unknown>, id: string): Post => {
+  const metaList = Array.isArray(data.meta) ? data.meta : []
+  const meta = [
+    coerceLocalizedText(metaList[0]),
+    coerceLocalizedText(metaList[1]),
+  ] as [LocalizedText | string, LocalizedText | string]
+  const publishedAt = data.published_at as
+    | { toDate?: () => Date }
+    | string
+    | number
+    | undefined
+  const publishedAtIso =
+    typeof publishedAt === 'string'
+      ? publishedAt
+      : typeof publishedAt === 'number'
+        ? new Date(publishedAt).toISOString()
+        : publishedAt?.toDate?.()?.toISOString()
+  return {
+    id,
+    slug: String(data.slug || id),
+    title: coerceLocalizedText(data.title),
+    date: coerceLocalizedText(data.date),
+    excerpt: coerceLocalizedText(data.excerpt),
+    meta,
+    body: coerceLocalizedText(data.body),
+    published_at: publishedAtIso,
+    legacy_url: typeof data.legacy_url === 'string' ? data.legacy_url : undefined,
+  }
+}
+
+const parseModerationPost = (data: Record<string, unknown>, id: string): ModerationPost => {
+  const createdAt = (data.created_at || data.createdAt) as { toDate?: () => Date } | undefined
+  return {
+    ...parseBlogPost(data, id),
+    id,
+    status: typeof data.status === 'string' ? data.status : 'pending',
+    author_name: typeof data.author_name === 'string' ? data.author_name : undefined,
+    author_email: typeof data.author_email === 'string' ? data.author_email : undefined,
+    created_at: createdAt?.toDate?.()?.toISOString(),
+  }
+}
+
+const parseLegacyPost = (data: Record<string, unknown>, index: number): Post => {
+  const metaList = Array.isArray(data.meta) ? data.meta : []
+  const meta = [
+    coerceLocalizedText(metaList[0]),
+    coerceLocalizedText(metaList[1]),
+  ] as [LocalizedText | string, LocalizedText | string]
+  const title = coerceLocalizedText(data.title)
+  const fallbackSlug = slugify(getLocalizedText(title, 'en') || `legacy-${index}`)
+  const legacyUrl =
+    typeof data.url === 'string'
+      ? data.url
+      : typeof data.legacy_url === 'string'
+        ? data.legacy_url
+        : undefined
+  return {
+    slug: typeof data.slug === 'string' ? data.slug : fallbackSlug,
+    title,
+    date: coerceLocalizedText(data.date),
+    excerpt: coerceLocalizedText(data.excerpt),
+    meta,
+    body: coerceLocalizedText(data.body),
+    legacy_url: legacyUrl,
+  }
+}
 
 const slugify = (value: string) =>
   value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '')
+
+const formatCityName = (value: string) =>
+  value
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+
+const getFuzzyOffset = (seed: number, minMeters = 500, maxMeters = 1000) => {
+  const range = maxMeters - minMeters
+  const meters = minMeters + (Math.abs(seed) % (range + 1))
+  return meters / 111000
+}
+
+const hashString = (value: string) => {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) | 0
+  }
+  return Math.abs(hash)
+}
+
+const getRelationshipPairKey = (a: string, b: string) =>
+  a < b ? `${a}_${b}` : `${b}_${a}`
 
 const getInitials = (name: string) =>
   name
@@ -3031,7 +479,7 @@ const QrToken = ({ token }: { token: string }) => {
   )
 }
 
-const getStatusLabel = (status: string, translation: typeof copy.en) => {
+const getStatusLabel = (status: string, translation: Record<string, string>) => {
   const normalized = status.toLowerCase()
   if (normalized === 'approved') {
     return translation.status_approved
@@ -3059,44 +507,76 @@ const ConstellationGraph = ({
   profiles: Profile[]
   lang: Lang
 }) => {
-  const members = (constellation.members ?? [])
-    .map((slug) => profiles.find((profile) => profile.slug === slug))
-    .filter(Boolean) as Profile[]
-  const links = (constellation.links ?? []).filter(
-    (link) =>
-      members.some((profile) => profile.slug === link.user_a) &&
-      members.some((profile) => profile.slug === link.user_b)
+  const memberKey = useMemo(
+    () => (constellation.members ?? []).join('|'),
+    [constellation.members]
+  )
+  const memberSlugs = useMemo(
+    () => (constellation.members ?? []).filter(Boolean),
+    [memberKey]
+  )
+  const memberLookup = useMemo(() => new Set(memberSlugs), [memberKey])
+  const members = useMemo(
+    () =>
+      memberSlugs
+        .map((slug) => profiles.find((profile) => profile.slug === slug))
+        .filter(Boolean) as Profile[],
+    [memberKey, profiles]
+  )
+  const linkKey = useMemo(
+    () =>
+      (constellation.links ?? [])
+        .map((link) => `${link.user_a}|${link.user_b}|${link.link_type}|${link.status}`)
+        .join('~'),
+    [constellation.links]
+  )
+  const links = useMemo(
+    () =>
+      (constellation.links ?? []).filter(
+        (link) => memberLookup.has(link.user_a) && memberLookup.has(link.user_b)
+      ),
+    [linkKey, memberKey]
   )
 
   const width = 260
   const height = 190
   const nodeSize = 44
-  const centerX = width / 2
-  const centerY = height / 2
-  const radius = Math.min(centerX, centerY) - nodeSize
-  const angleOffset = -Math.PI / 2
-  const count = Math.max(members.length, 1)
-  const angleStep = (Math.PI * 2) / count
+  type GraphNode = Profile & { x: number; y: number }
+  const [layoutNodes, setLayoutNodes] = useState<GraphNode[]>([])
 
-  const positions = members.map((profile, index) => {
-    if (members.length === 1) {
-      return {
-        profile,
-        x: centerX,
-        y: centerY,
-      }
+  useEffect(() => {
+    if (!members.length) {
+      setLayoutNodes([])
+      return
     }
-    const angle = angleOffset + angleStep * index
-    return {
-      profile,
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle),
-    }
-  })
+    const nodes = members.map((profile) => ({
+      ...profile,
+      x: width / 2,
+      y: height / 2,
+    })) as GraphNode[]
+    const linkData = links.map((link) => ({
+      source: link.user_a,
+      target: link.user_b,
+    }))
+    const simulation = forceSimulation<GraphNode>(nodes)
+      .force('charge', forceManyBody().strength(-140))
+      .force(
+        'link',
+        forceLink<GraphNode, { source: string; target: string }>(linkData)
+          .id((node) => node.slug)
+          .distance(80)
+      )
+      .force('center', forceCenter(width / 2, height / 2))
+      .force('collide', forceCollide(nodeSize / 2 + 6))
+      .stop()
+    simulation.tick(120)
+    setLayoutNodes(nodes.map((node) => ({ ...node })))
+    simulation.stop()
+  }, [links, members])
 
-  const nodeLookup = positions.reduce<Record<string, { x: number; y: number }>>(
+  const nodeLookup = layoutNodes.reduce<Record<string, { x: number; y: number }>>(
     (acc, node) => {
-      acc[node.profile.slug] = { x: node.x, y: node.y }
+      acc[node.slug] = { x: node.x, y: node.y }
       return acc
     },
     {}
@@ -3130,14 +610,14 @@ const ConstellationGraph = ({
           )
         })}
       </svg>
-      {positions.map(({ profile, x, y }) => (
+      {layoutNodes.map((profile) => (
         <Link
           key={profile.slug}
           to={`/${lang}/profiles/${profile.slug}`}
           className="constellation-node"
           style={{
-            left: `${x - nodeSize / 2}px`,
-            top: `${y - nodeSize / 2}px`,
+            left: `${profile.x - nodeSize / 2}px`,
+            top: `${profile.y - nodeSize / 2}px`,
           }}
           aria-label={profile.display_name}
           title={profile.display_name}
@@ -3147,6 +627,8 @@ const ConstellationGraph = ({
               src={profile.photo_url}
               alt={profile.display_name}
               loading="lazy"
+              className="user-media"
+              onClick={revealSafetyMedia}
             />
           ) : (
             <span className="constellation-node-initials">
@@ -3159,13 +641,17 @@ const ConstellationGraph = ({
   )
 }
 
+const SPLASH_SCREEN_ENABLED = false
+
 const SiteLayout = ({ context }: { context: AppContext }) => {
   const location = useLocation()
   const navigate = useNavigate()
   const lang = getLangFromPath(location.pathname)
   const [langValue, setLangValue] = useState(lang)
+  const [ageConfirmed, setAgeConfirmed] = useState(!SPLASH_SCREEN_ENABLED)
+  const [ageGateReady, setAgeGateReady] = useState(!SPLASH_SCREEN_ENABLED)
   const copy = getCopy(lang)
-  const { isAdmin, authUser, handleAuthClick } = context
+  const { isAdmin, authUser, handleAuthClick, safetyMode, setSafetyMode } = context
   const registerState = {
     from: `${location.pathname}${location.search}${location.hash}`,
   }
@@ -3174,13 +660,86 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
     setLangValue(lang)
   }, [lang])
 
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [location.pathname])
+
+  useEffect(() => {
+    if (!SPLASH_SCREEN_ENABLED) {
+      return
+    }
+    try {
+      const stored = window.localStorage.getItem('lbs-age-confirmed')
+      setAgeConfirmed(stored === 'true')
+    } catch {
+      setAgeConfirmed(false)
+    } finally {
+      setAgeGateReady(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!SPLASH_SCREEN_ENABLED || !ageGateReady) {
+      return
+    }
+    document.body.style.overflow = ageConfirmed ? '' : 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [ageConfirmed, ageGateReady])
+
+  const handleAgeConfirm = () => {
+    try {
+      window.localStorage.setItem('lbs-age-confirmed', 'true')
+    } catch {
+      // Ignore storage failures; user will see gate again.
+    }
+    setAgeConfirmed(true)
+  }
+
+  const handleAgeExit = () => {
+    window.location.assign('https://www.google.com')
+  }
+
   const handleLanguageChange = (value: string) => {
     const rest = location.pathname.replace(/^\/(en|pl|fr|de|it|es)/, '') || '/'
     navigate(`/${value}${rest}`)
   }
 
+  const isActivePath = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
+
+  const siteUrl =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : ''
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'LedBySwing',
+    url: siteUrl || undefined,
+  }
+
   return (
     <div>
+      <JsonLd data={organizationSchema} />
+      {SPLASH_SCREEN_ENABLED && !ageConfirmed && ageGateReady ? (
+        <div className="age-gate" role="dialog" aria-modal="true">
+          <div className="age-gate-card">
+            <p className="eyebrow">{copy.age_gate_kicker}</p>
+            <h2>{copy.age_gate_title}</h2>
+            <p className="muted">{copy.age_gate_body}</p>
+            <div className="age-gate-actions">
+              <button className="cta" type="button" onClick={handleAgeConfirm}>
+                {copy.age_gate_confirm}
+              </button>
+              <button className="ghost" type="button" onClick={handleAgeExit}>
+                {copy.age_gate_exit}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <div className="ambient"></div>
       <header className="site-header">
         <Link to={`/${lang}`} className="brand">
@@ -3238,6 +797,13 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
           {isAdmin ? (
             <Link to={`/${lang}/admin`}>{copy.nav_admin}</Link>
           ) : null}
+          <button
+            className="ghost"
+            type="button"
+            onClick={() => setSafetyMode(!safetyMode)}
+          >
+            {safetyMode ? copy.safety_mode_disable : copy.safety_mode_enable}
+          </button>
           <select
             className="lang-select"
             value={langValue}
@@ -3295,43 +861,58 @@ const SiteLayout = ({ context }: { context: AppContext }) => {
           </Link>
         </div>
       </footer>
+      <nav className="mobile-nav" aria-label={copy.mobile_nav_label}>
+        <Link
+          className={isActivePath(`/${lang}`) ? 'active' : ''}
+          to={`/${lang}`}
+        >
+          {copy.mobile_nav_feed}
+        </Link>
+        <Link
+          className={isActivePath(`/${lang}/events`) ? 'active' : ''}
+          to={`/${lang}/events`}
+        >
+          {copy.mobile_nav_search}
+        </Link>
+        <Link className="mobile-nav-create" to={`/${lang}/events/host`}>
+          {copy.mobile_nav_create}
+        </Link>
+        <Link
+          className={isActivePath(`/${lang}/messages`) ? 'active' : ''}
+          to={`/${lang}/messages`}
+        >
+          {copy.mobile_nav_messages}
+        </Link>
+        <Link
+          className={isActivePath(`/${lang}/profile`) ? 'active' : ''}
+          to={`/${lang}/profile`}
+        >
+          {copy.mobile_nav_profile}
+        </Link>
+      </nav>
     </div>
   )
 }
 
 const HomePage = () => {
-  const {
-    clubs,
-    constellations,
-    profiles,
-    posts,
-    pendingReviews,
-    isAdmin,
-    firebaseConfigured,
-  } = useAppContext()
+  const { authUser, clubs, constellations, profiles, posts } = useAppContext()
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
+  const createConstellationPath = `/${lang}/profile#constellation-links`
   const registerState = {
-    from: `${location.pathname}${location.search}${location.hash}`,
-  }
-  const registerState = {
-    from: `${location.pathname}${location.search}${location.hash}`,
+    from: createConstellationPath,
   }
   const highlightClubs = useMemo(() => {
     if (!clubs.length) {
       return []
     }
-    const shuffled = [...clubs]
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-      const swapIndex = Math.floor(Math.random() * (index + 1))
-      ;[shuffled[index], shuffled[swapIndex]] = [
-        shuffled[swapIndex],
-        shuffled[index],
-      ]
-    }
-    return shuffled.slice(0, 10)
+    const sorted = [...clubs].sort(
+      (a, b) => hashString(a.slug) - hashString(b.slug)
+    )
+    return sorted.slice(0, 10)
   }, [clubs])
+  const previewClubs = useMemo(() => clubs.slice(0, 6), [clubs])
 
   return (
     <>
@@ -3344,7 +925,11 @@ const HomePage = () => {
           </p>
           <p className="lead">{copy.hero_paragraph}</p>
           <div className="hero-actions">
-            <Link className="cta" to={`/${lang}/register`} state={registerState}>
+            <Link
+              className="cta"
+              to={authUser ? createConstellationPath : `/${lang}/register`}
+              state={authUser ? undefined : registerState}
+            >
               {copy.hero_cta_primary}
             </Link>
             <button className="ghost">{copy.hero_cta_secondary}</button>
@@ -3479,7 +1064,7 @@ const HomePage = () => {
           </div>
         </div>
         <div className="club-grid">
-          {clubs.map((club) => (
+          {previewClubs.map((club) => (
             <article className="data-card reveal" key={club.slug}>
               <h5>
                 <Link to={`/${lang}/clubs/${club.slug}`}>{club.name}</Link>
@@ -3513,17 +1098,14 @@ const HomePage = () => {
               const meta = getLocalizedList(post.meta, lang)
               const postDate = getLocalizedText(post.date, lang)
               const postTitle = getLocalizedText(post.title, lang)
-              const postUrl = getLocalizedText(post.url, lang)
               const postKey = `${getLocalizedText(post.title, 'en')}-${getLocalizedText(
                 post.date,
                 'en'
               )}`
               return (
-                <a
+                <Link
                   className="post reveal"
-                  href={postUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                  to={`/${lang}/blog/${post.slug}`}
                   key={postKey}
                 >
                   <p className="post-date">{postDate}</p>
@@ -3533,7 +1115,7 @@ const HomePage = () => {
                     <span>{meta[0]}</span>
                     <span>{meta[1]}</span>
                   </div>
-                </a>
+                </Link>
               )
             })
           ) : (
@@ -3565,8 +1147,8 @@ const EuropeMapSection = ({ id, title, description }: MapSectionProps) => {
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
   const mapRef = useRef<HTMLDivElement | null>(null)
-  const mapInstanceRef = useRef<L.Map | null>(null)
-  const markersRef = useRef<L.LayerGroup | null>(null)
+  const mapInstanceRef = useRef<ReturnType<typeof L.map> | null>(null)
+  const markersRef = useRef<ReturnType<typeof L.layerGroup> | null>(null)
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) {
@@ -3664,17 +1246,14 @@ const BlogPage = () => {
             const meta = getLocalizedList(post.meta, lang)
             const postDate = getLocalizedText(post.date, lang)
             const postTitle = getLocalizedText(post.title, lang)
-            const postUrl = getLocalizedText(post.url, lang)
             const postKey = `${getLocalizedText(post.title, 'en')}-${getLocalizedText(
               post.date,
               'en'
             )}`
             return (
-              <a
+              <Link
                 className="post reveal"
-                href={postUrl}
-                target="_blank"
-                rel="noreferrer"
+                to={`/${lang}/blog/${post.slug}`}
                 key={postKey}
               >
                 <p className="post-date">{postDate}</p>
@@ -3684,13 +1263,66 @@ const BlogPage = () => {
                   <span>{meta[0]}</span>
                   <span>{meta[1]}</span>
                 </div>
-              </a>
+              </Link>
             )
           })
         ) : (
           <p className="muted">{copy.blog_loading}</p>
         )}
       </div>
+    </section>
+  )
+}
+
+const BlogPostPage = () => {
+  const { posts } = useAppContext()
+  const location = useLocation()
+  const { slug } = useParams()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const post = posts.find((entry) => entry.slug === slug)
+
+  if (!post) {
+    return (
+      <section className="feature">
+        <div className="section-title">
+          <h3>{copy.blog_title}</h3>
+          <p>{copy.blog_desc}</p>
+        </div>
+        <p className="muted">Article not found.</p>
+        <Link className="text-link" to={`/${lang}/blog`}>
+          {copy.nav_blog}
+        </Link>
+      </section>
+    )
+  }
+
+  const postDate = getLocalizedText(post.date, lang)
+  const postTitle = getLocalizedText(post.title, lang)
+  const postBody = getLocalizedText(post.body, lang)
+  const postMeta = getLocalizedList(post.meta, lang)
+  const isHtmlBody = /<\/(p|div|figure|h[1-6]|img|video|ul|ol|blockquote)>/i.test(
+    postBody
+  )
+  const bodyHtml = useMemo(
+    () => (isHtmlBody ? postBody : renderMarkdown(postBody)),
+    [isHtmlBody, postBody]
+  )
+
+  return (
+    <section className="feature">
+      <div className="section-title post-detail">
+        <p className="post-date">{postDate}</p>
+        <h3>{postTitle}</h3>
+        <div className="post-meta">
+          <span>{postMeta[0]}</span>
+          <span>{postMeta[1]}</span>
+        </div>
+      </div>
+      <div
+        className="post-body"
+        dangerouslySetInnerHTML={{ __html: bodyHtml }}
+      />
     </section>
   )
 }
@@ -4150,6 +1782,10 @@ const ProfilePage = () => {
     handleNotificationsEnable,
     handleNotificationsDisable,
     handleVerificationSubmit: handleVerificationSubmitRequest,
+    handleAccountDelete,
+    safetyMode,
+    setSafetyMode,
+    userHasRsvp,
     relationshipLinks,
     pendingLinkRequests,
     handleLinkRequest,
@@ -4157,8 +1793,12 @@ const ProfilePage = () => {
     handleLinkVisibility,
   } = useAppContext()
   const location = useLocation()
+  const navigate = useNavigate()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
+  const registerState = {
+    from: `${location.pathname}${location.search}${location.hash}`,
+  }
   const [profileForm, setProfileForm] = useState({
     displayName: authUser || '',
     birthDate: '',
@@ -4174,13 +1814,20 @@ const ProfilePage = () => {
   const [photoStatus, setPhotoStatus] = useState('')
   const [photoLoading, setPhotoLoading] = useState(false)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    if (typeof Notification === 'undefined') {
+      return false
+    }
+    return Notification.permission === 'granted'
+  })
   const [notificationsStatus, setNotificationsStatus] = useState('')
   const [verificationFile, setVerificationFile] = useState<File | null>(null)
   const [verificationStatus, setVerificationStatus] = useState('')
   const [verificationLoading, setVerificationLoading] = useState(false)
   const [profileStatus, setProfileStatus] = useState('')
   const [profileLoading, setProfileLoading] = useState(false)
+  const [deleteStatus, setDeleteStatus] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [linkEmail, setLinkEmail] = useState('')
   const [linkType, setLinkType] =
     useState<RelationshipLink['link_type']>('Polycule Member')
@@ -4223,14 +1870,6 @@ const ProfilePage = () => {
     }
   }, [photoPreviewUrl])
 
-  useEffect(() => {
-    if (typeof Notification === 'undefined') {
-      setNotificationsEnabled(false)
-      return
-    }
-    setNotificationsEnabled(Notification.permission === 'granted')
-  }, [])
-
   const underage =
     profileForm.birthDate.length > 0 && !isAdult(profileForm.birthDate)
 
@@ -4239,6 +1878,29 @@ const ProfilePage = () => {
   )
   const confirmedLinks = relationshipLinks.filter(
     (link) => link.status === 'Confirmed'
+  )
+
+  const onboardingSteps = [
+    {
+      id: 'photo',
+      label: copy.onboarding_step_photo,
+      done: Boolean(profilePhotoUrl),
+    },
+    {
+      id: 'desires',
+      label: copy.onboarding_step_desires,
+      done: profileForm.interests.trim().length > 0,
+    },
+    {
+      id: 'event',
+      label: copy.onboarding_step_event,
+      done: userHasRsvp,
+    },
+  ]
+  const onboardingDoneCount = onboardingSteps.filter((step) => step.done).length
+  const showOnboarding = onboardingDoneCount < onboardingSteps.length
+  const onboardingProgress = Math.round(
+    (onboardingDoneCount / onboardingSteps.length) * 100
   )
 
   const getCounterpart = (link: RelationshipLink) => {
@@ -4342,6 +2004,21 @@ const ProfilePage = () => {
     setVerificationLoading(false)
   }
 
+  const handleDeleteClick = async () => {
+    const confirmation = window.prompt(copy.delete_account_confirm_prompt)
+    if (confirmation !== copy.delete_account_confirm_value) {
+      setDeleteStatus(copy.delete_account_status_cancelled)
+      return
+    }
+    setDeleteLoading(true)
+    const result = await handleAccountDelete()
+    setDeleteStatus(result.message)
+    setDeleteLoading(false)
+    if (result.ok) {
+      navigate(`/${lang}`)
+    }
+  }
+
   if (!authUser) {
     return (
       <section className="feature">
@@ -4362,6 +2039,25 @@ const ProfilePage = () => {
         <h3>{copy.profile_page_title}</h3>
         <p>{copy.profile_page_subtitle}</p>
       </div>
+      {showOnboarding ? (
+        <div className="data-card detail-card onboarding-card">
+          <h5>{copy.onboarding_title}</h5>
+          <p className="muted">{copy.onboarding_desc}</p>
+          <div className="onboarding-progress" role="progressbar" aria-valuenow={onboardingProgress} aria-valuemin={0} aria-valuemax={100}>
+            <span style={{ width: `${onboardingProgress}%` }} />
+          </div>
+          <div className="onboarding-steps">
+            {onboardingSteps.map((step) => (
+              <span
+                key={step.id}
+                className={step.done ? 'onboarding-step onboarding-step--done' : 'onboarding-step'}
+              >
+                {step.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="auth-panel register-panel reveal">
         <div className="register-form">
           <div className="register-header">
@@ -4506,12 +2202,14 @@ const ProfilePage = () => {
           <h5>{copy.photo_upload_label}</h5>
           <div className="photo-panel">
             <div className="photo-preview">
-              {photoPreviewUrl || profilePhotoUrl ? (
-                <img
-                  src={photoPreviewUrl || profilePhotoUrl}
-                  alt={profileForm.displayName}
-                />
-              ) : (
+            {photoPreviewUrl || profilePhotoUrl ? (
+              <img
+                src={photoPreviewUrl || profilePhotoUrl}
+                alt={profileForm.displayName}
+                className="user-media"
+                onClick={revealSafetyMedia}
+              />
+            ) : (
                 <div className="photo-placeholder">
                   {getInitials(profileForm.displayName || authUser || 'User')}
                 </div>
@@ -4540,7 +2238,7 @@ const ProfilePage = () => {
                       const result = await cropImageToSquare(nextFile)
                       setPhotoProcessedFile(result.file)
                       setPhotoPreviewUrl(result.previewUrl)
-                    } catch (error) {
+                    } catch {
                       setPhotoStatus(copy.photo_upload_error)
                     }
                   }}
@@ -4569,6 +2267,19 @@ const ProfilePage = () => {
             {notificationsStatus ? (
               <p className="register-status">{notificationsStatus}</p>
             ) : null}
+          </div>
+        </div>
+        <div className="data-card detail-card">
+          <h5>{copy.safety_mode_title}</h5>
+          <p className="muted">{copy.safety_mode_desc}</p>
+          <div className="link-form">
+            <button
+              className="cta"
+              type="button"
+              onClick={() => setSafetyMode(!safetyMode)}
+            >
+              {safetyMode ? copy.safety_mode_disable : copy.safety_mode_enable}
+            </button>
           </div>
         </div>
         <div className="data-card detail-card">
@@ -4605,7 +2316,7 @@ const ProfilePage = () => {
           </form>
         </div>
       </div>
-      <div className="detail-grid link-grid">
+      <div className="detail-grid link-grid" id="constellation-links">
         <div className="data-card detail-card">
           <h5>{copy.link_section_title}</h5>
           <p className="muted">{copy.link_section_subtitle}</p>
@@ -4738,6 +2449,36 @@ const ProfilePage = () => {
             <p className="muted">{copy.link_requests_empty}</p>
           )}
         </div>
+        <div className="data-card detail-card">
+          <h5>{copy.delete_account_title}</h5>
+          <p className="muted">{copy.delete_account_desc}</p>
+          <div className="link-form">
+            <button
+              className="ghost"
+              type="button"
+              onClick={handleDeleteClick}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? copy.delete_account_deleting : copy.delete_account_button}
+            </button>
+            {deleteStatus ? <p className="register-status">{deleteStatus}</p> : null}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+const MessagesPage = () => {
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+
+  return (
+    <section className="feature">
+      <div className="section-title">
+        <h3>{copy.messages_page_title}</h3>
+        <p>{copy.messages_page_desc}</p>
       </div>
     </section>
   )
@@ -4765,7 +2506,12 @@ const PublicProfilePage = () => {
         <div className="profile-hero">
           <div className="photo-preview">
             {profile.photo_url ? (
-              <img src={profile.photo_url} alt={profile.display_name} />
+              <img
+                src={profile.photo_url}
+                alt={profile.display_name}
+                className="user-media"
+                onClick={revealSafetyMedia}
+              />
             ) : (
               <div className="photo-placeholder">
                 {getInitials(profile.display_name)}
@@ -4888,37 +2634,20 @@ const GuidelinesPage = () => {
   )
 }
 
-const AdminPage = () => {
-  const {
-    pendingReviews,
-    handleReviewModeration,
-    isAdmin,
-    reviews,
-    clubNames,
-    verificationRequests,
-    handleVerificationModeration,
-    pendingEventRsvps,
-    events,
-    handleEventRsvpUpdate,
-  } = useAppContext()
+const AdminLayout = () => {
+  const context = useOutletContext<AppContext>()
+  const { isAdmin } = context
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
-  const approvedReviews = useMemo(
-    () =>
-      reviews.filter(
-        (review) => review.status === 'approved' || review.status === 'published'
-      ),
-    [reviews]
-  )
-  const eventLookup = useMemo(
-    () =>
-      events.reduce<Record<string, Event>>((acc, event) => {
-        acc[event.slug] = event
-        return acc
-      }, {}),
-    [events]
-  )
+  const basePath = `/${lang}/admin`
+  const navItems = [
+    { path: basePath, label: copy.admin_nav_overview },
+    { path: `${basePath}/reviews`, label: copy.admin_nav_reviews },
+    { path: `${basePath}/blog`, label: copy.admin_nav_blog },
+    { path: `${basePath}/verification`, label: copy.admin_nav_verification },
+    { path: `${basePath}/events`, label: copy.admin_nav_events },
+  ]
 
   if (!isAdmin) {
     return (
@@ -4940,6 +2669,37 @@ const AdminPage = () => {
         <h3>{copy.admin_title}</h3>
         <p>{copy.admin_subtitle}</p>
       </div>
+      <div className="admin-nav">
+        {navItems.map((item) => (
+          <Link
+            key={item.path}
+            className={location.pathname === item.path ? 'active' : ''}
+            to={item.path}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </div>
+      <Outlet context={context} />
+    </section>
+  )
+}
+
+const AdminOverview = () => {
+  const { pendingReviews, pendingBlogPosts, reviews } = useAppContext()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const approvedReviews = useMemo(
+    () =>
+      reviews.filter(
+        (review) => review.status === 'approved' || review.status === 'published'
+      ),
+    [reviews]
+  )
+
+  return (
+    <>
       <div className="admin-grid">
         <div className="admin-card">
           <p className="queue-label">{copy.admin_pending_title}</p>
@@ -4947,174 +2707,15 @@ const AdminPage = () => {
           <p>{copy.admin_pending_desc}</p>
         </div>
         <div className="admin-card">
+          <p className="queue-label">{copy.admin_blog_pending_title}</p>
+          <h4>{pendingBlogPosts.length}</h4>
+          <p>{copy.admin_blog_pending_desc}</p>
+        </div>
+        <div className="admin-card">
           <p className="queue-label">{copy.admin_approved_title}</p>
           <h4>{approvedReviews.length}</h4>
           <p>{copy.admin_approved_desc}</p>
         </div>
-      </div>
-      <div className="admin-panel">
-        <div className="admin-panel-header">
-          <h4>{copy.admin_queue_title}</h4>
-        </div>
-        {pendingReviews.length ? (
-          <div className="admin-list">
-            {pendingReviews.map((review) => (
-              <div className="admin-item" key={review.id || review.club_slug}>
-                <div className="admin-item-main">
-                  <p className="review-name">
-                    {review.author_slug
-                      ? review.author_slug.replace(/-/g, ' ')
-                      : copy.review_author_anonymous}
-                  </p>
-                  <p className="muted">
-                    {clubNames[review.club_slug] || review.club_slug} ·{' '}
-                    {copy.review_rating_label} {review.rating}/5
-                  </p>
-                  <p className="admin-text">{review.text}</p>
-                </div>
-                <div className="admin-actions">
-                  <button
-                    className="ghost"
-                    type="button"
-                    onClick={() =>
-                      review.id && handleReviewModeration(review.id, 'rejected')
-                    }
-                  >
-                    {copy.admin_action_reject}
-                  </button>
-                  <button
-                    className="cta"
-                    type="button"
-                    onClick={() =>
-                      review.id && handleReviewModeration(review.id, 'approved')
-                    }
-                  >
-                    {copy.admin_action_approve}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">{copy.admin_no_pending}</p>
-        )}
-      </div>
-      <div className="admin-panel">
-        <div className="admin-panel-header">
-          <h4>{copy.verification_admin_title}</h4>
-          <p className="muted">{copy.verification_admin_desc}</p>
-        </div>
-        {verificationRequests.length ? (
-          <div className="admin-list">
-            {verificationRequests.map((request) => (
-              <div className="admin-item" key={request.id || request.user_uid}>
-                <div className="admin-item-main">
-                  <p className="review-name">{request.user_name}</p>
-                  <p className="muted">{request.user_email}</p>
-                  <p className="muted">
-                    {copy.verification_phrase_label}: {request.phrase}
-                  </p>
-                  {request.photo_url ? (
-                    <img
-                      className="admin-photo"
-                      src={request.photo_url}
-                      alt={request.user_name}
-                    />
-                  ) : null}
-                </div>
-                <div className="admin-actions">
-                  <button
-                    className="ghost"
-                    type="button"
-                    onClick={() =>
-                      request.id &&
-                      handleVerificationModeration(request.id, 'rejected')
-                    }
-                  >
-                    {copy.verification_admin_reject}
-                  </button>
-                  <button
-                    className="cta"
-                    type="button"
-                    onClick={() =>
-                      request.id &&
-                      handleVerificationModeration(request.id, 'approved')
-                    }
-                  >
-                    {copy.verification_admin_approve}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">{copy.verification_admin_empty}</p>
-        )}
-      </div>
-      <div className="admin-panel">
-        <div className="admin-panel-header">
-          <h4>{copy.admin_events_title}</h4>
-          <p className="muted">{copy.admin_events_desc}</p>
-        </div>
-        {pendingEventRsvps.length ? (
-          <div className="admin-list">
-            {pendingEventRsvps.map((rsvp) => {
-              const event = eventLookup[rsvp.event_slug]
-              const categoryLabel =
-                rsvp.category === 'men'
-                  ? copy.event_cap_men
-                  : rsvp.category === 'women'
-                    ? copy.event_cap_women
-                    : copy.event_cap_couples
-              return (
-                <div
-                  className="admin-item"
-                  key={rsvp.id || `${rsvp.event_slug}-${rsvp.user_uid}`}
-                >
-                  <div className="admin-item-main">
-                    <p className="review-name">{rsvp.user_name}</p>
-                    <p className="muted">{rsvp.user_email}</p>
-                    <p className="muted">
-                      {event ? `${event.title} · ${event.date} · ${event.city}` : rsvp.event_slug}
-                    </p>
-                    <p className="admin-text">
-                      {copy.event_rsvp_category_label}: {categoryLabel}
-                    </p>
-                    {rsvp.trust_badges?.length ? (
-                      <div className="tag-row">
-                        {rsvp.trust_badges.map((badge) => (
-                          <span key={`${rsvp.user_uid}-${badge}`}>{badge}</span>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="admin-actions">
-                    <button
-                      className="ghost"
-                      type="button"
-                      onClick={() =>
-                        rsvp.id ? handleEventRsvpUpdate(rsvp.id, 'Declined') : null
-                      }
-                    >
-                      {copy.event_guest_action_decline}
-                    </button>
-                    <button
-                      className="cta"
-                      type="button"
-                      onClick={() =>
-                        rsvp.id ? handleEventRsvpUpdate(rsvp.id, 'Approved') : null
-                      }
-                    >
-                      {copy.event_guest_action_approve}
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="muted">{copy.admin_events_empty}</p>
-        )}
       </div>
       <div className="admin-panel">
         <div className="admin-panel-header">
@@ -5131,7 +2732,6 @@ const AdminPage = () => {
                       : copy.review_author_anonymous}
                   </p>
                   <p className="muted">
-                    {clubNames[review.club_slug] || review.club_slug} ·{' '}
                     {copy.review_rating_label} {review.rating}/5
                   </p>
                   <p className="admin-text">{review.text}</p>
@@ -5143,7 +2743,531 @@ const AdminPage = () => {
           <p className="muted">{copy.admin_recent_empty}</p>
         )}
       </div>
-    </section>
+    </>
+  )
+}
+
+const AdminReviewsPage = () => {
+  const { pendingReviews, handleReviewModeration, clubNames } = useAppContext()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel-header">
+        <h4>{copy.admin_queue_title}</h4>
+      </div>
+      {pendingReviews.length ? (
+        <div className="admin-list">
+          {pendingReviews.map((review) => (
+            <div className="admin-item" key={review.id || review.club_slug}>
+              <div className="admin-item-main">
+                <p className="review-name">
+                  {review.author_slug
+                    ? review.author_slug.replace(/-/g, ' ')
+                    : copy.review_author_anonymous}
+                </p>
+                <p className="muted">
+                  {clubNames[review.club_slug] || review.club_slug} ·{' '}
+                  {copy.review_rating_label} {review.rating}/5
+                </p>
+                <p className="admin-text">{review.text}</p>
+              </div>
+              <div className="admin-actions">
+                <button
+                  className="ghost"
+                  type="button"
+                  onClick={() =>
+                    review.id && handleReviewModeration(review.id, 'rejected')
+                  }
+                >
+                  {copy.admin_action_reject}
+                </button>
+                <button
+                  className="cta"
+                  type="button"
+                  onClick={() =>
+                    review.id && handleReviewModeration(review.id, 'approved')
+                  }
+                >
+                  {copy.admin_action_approve}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="muted">{copy.admin_no_pending}</p>
+      )}
+    </div>
+  )
+}
+
+const AdminBlogPage = () => {
+  const {
+    pendingBlogPosts,
+    handleBlogModeration,
+    handleBlogSave,
+    posts,
+  } = useAppContext()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const [blogForm, setBlogForm] = useState({
+    title: '',
+    slug: '',
+    date: '',
+    excerpt: '',
+    meta1: '',
+    meta2: '',
+    body: '',
+    legacyUrl: '',
+    status: 'published' as 'published' | 'pending',
+  })
+  const [blogStatus, setBlogStatus] = useState('')
+  const [blogLoading, setBlogLoading] = useState(false)
+  const [blogEditingId, setBlogEditingId] = useState<string | null>(null)
+  const [blogBase, setBlogBase] = useState<Post | ModerationPost | null>(null)
+
+  const updateLocalized = (
+    current: LocalizedText | string | undefined,
+    value: string
+  ) => {
+    if (typeof current === 'object' && current) {
+      return { ...current, [lang]: value }
+    }
+    return { [lang]: value }
+  }
+
+  const resetBlogForm = () => {
+    setBlogForm({
+      title: '',
+      slug: '',
+      date: '',
+      excerpt: '',
+      meta1: '',
+      meta2: '',
+      body: '',
+      legacyUrl: '',
+      status: 'published',
+    })
+    setBlogEditingId(null)
+    setBlogBase(null)
+    setBlogStatus('')
+  }
+
+  const loadBlogForm = (post: Post | ModerationPost) => {
+    const metaList = Array.isArray(post.meta) ? post.meta : []
+    setBlogForm({
+      title: getLocalizedText(post.title, lang),
+      slug: post.slug,
+      date: getLocalizedText(post.date, lang),
+      excerpt: getLocalizedText(post.excerpt, lang),
+      meta1: getLocalizedText(metaList[0], lang),
+      meta2: getLocalizedText(metaList[1], lang),
+      body: getLocalizedText(post.body, lang),
+      legacyUrl: post.legacy_url || '',
+      status: 'status' in post && post.status === 'pending' ? 'pending' : 'published',
+    })
+    setBlogEditingId(post.id || post.slug)
+    setBlogBase(post)
+    setBlogStatus('')
+  }
+
+  const handleBlogSaveSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!blogForm.title.trim()) {
+      setBlogStatus(copy.admin_blog_missing_title)
+      return
+    }
+    if (!blogForm.body.trim()) {
+      setBlogStatus(copy.admin_blog_missing_body)
+      return
+    }
+    setBlogLoading(true)
+    const slug = blogEditingId
+      ? blogForm.slug
+      : blogForm.slug.trim() || slugify(blogForm.title)
+    const baseMeta = Array.isArray(blogBase?.meta) ? blogBase?.meta : []
+    const payload = {
+      id: blogEditingId || undefined,
+      slug,
+      title: updateLocalized(blogBase?.title, blogForm.title),
+      date: updateLocalized(blogBase?.date, blogForm.date),
+      excerpt: updateLocalized(blogBase?.excerpt, blogForm.excerpt),
+      meta: [
+        updateLocalized(baseMeta?.[0], blogForm.meta1),
+        updateLocalized(baseMeta?.[1], blogForm.meta2),
+      ] as [LocalizedText | string, LocalizedText | string],
+      body: updateLocalized(blogBase?.body, blogForm.body),
+      legacy_url: blogForm.legacyUrl.trim(),
+      status: blogForm.status,
+    }
+    const result = await handleBlogSave(payload)
+    setBlogStatus(result.message)
+    if (result.ok && !blogEditingId) {
+      resetBlogForm()
+    }
+    setBlogLoading(false)
+  }
+
+  return (
+    <>
+      <div className="admin-panel">
+        <div className="admin-panel-header">
+          <h4>{copy.admin_blog_editor_title}</h4>
+          <p className="muted">{copy.admin_blog_editor_desc}</p>
+        </div>
+        <form className="review-form" onSubmit={handleBlogSaveSubmit}>
+          <div className="review-form-header">
+            <p className="review-status">{blogStatus || copy.admin_blog_editor_hint}</p>
+          </div>
+          <label>
+            {copy.admin_blog_field_title}
+            <input
+              className="register-input"
+              value={blogForm.title}
+              onChange={(eventInput) =>
+                setBlogForm((prev) => ({ ...prev, title: eventInput.target.value }))
+              }
+            />
+          </label>
+          <label>
+            {copy.admin_blog_field_slug}
+            <input
+              className="register-input"
+              value={blogForm.slug}
+              onChange={(eventInput) =>
+                setBlogForm((prev) => ({ ...prev, slug: eventInput.target.value }))
+              }
+              disabled={Boolean(blogEditingId)}
+            />
+          </label>
+          <label>
+            {copy.admin_blog_field_date}
+            <input
+              className="register-input"
+              value={blogForm.date}
+              onChange={(eventInput) =>
+                setBlogForm((prev) => ({ ...prev, date: eventInput.target.value }))
+              }
+            />
+          </label>
+          <label>
+            {copy.admin_blog_field_excerpt}
+            <textarea
+              placeholder={copy.admin_blog_field_excerpt}
+              value={blogForm.excerpt}
+              onChange={(eventInput) =>
+                setBlogForm((prev) => ({ ...prev, excerpt: eventInput.target.value }))
+              }
+            ></textarea>
+          </label>
+          <label>
+            {copy.admin_blog_field_meta_1}
+            <input
+              className="register-input"
+              value={blogForm.meta1}
+              onChange={(eventInput) =>
+                setBlogForm((prev) => ({ ...prev, meta1: eventInput.target.value }))
+              }
+            />
+          </label>
+          <label>
+            {copy.admin_blog_field_meta_2}
+            <input
+              className="register-input"
+              value={blogForm.meta2}
+              onChange={(eventInput) =>
+                setBlogForm((prev) => ({ ...prev, meta2: eventInput.target.value }))
+              }
+            />
+          </label>
+          <label>
+            {copy.admin_blog_field_body}
+            <textarea
+              placeholder={copy.admin_blog_field_body}
+              value={blogForm.body}
+              onChange={(eventInput) =>
+                setBlogForm((prev) => ({ ...prev, body: eventInput.target.value }))
+              }
+            ></textarea>
+          </label>
+          <label>
+            {copy.admin_blog_field_legacy}
+            <input
+              className="register-input"
+              value={blogForm.legacyUrl}
+              onChange={(eventInput) =>
+                setBlogForm((prev) => ({ ...prev, legacyUrl: eventInput.target.value }))
+              }
+            />
+          </label>
+          <label>
+            {copy.admin_blog_field_status}
+            <select
+              value={blogForm.status}
+              onChange={(eventInput) =>
+                setBlogForm((prev) => ({
+                  ...prev,
+                  status: eventInput.target.value as 'published' | 'pending',
+                }))
+              }
+            >
+              <option value="published">{copy.admin_blog_status_published}</option>
+              <option value="pending">{copy.admin_blog_status_pending}</option>
+            </select>
+          </label>
+          <div className="admin-actions">
+            <button className="ghost" type="button" onClick={resetBlogForm}>
+              {copy.admin_blog_new}
+            </button>
+            <button className="cta" type="submit" disabled={blogLoading}>
+              {blogLoading ? copy.admin_blog_saving : copy.admin_blog_save}
+            </button>
+          </div>
+        </form>
+      </div>
+      <div className="admin-panel">
+        <div className="admin-panel-header">
+          <h4>{copy.admin_blog_queue_title}</h4>
+          <p className="muted">{copy.admin_blog_queue_desc}</p>
+        </div>
+        {pendingBlogPosts.length ? (
+          <div className="admin-list">
+            {pendingBlogPosts.map((post) => {
+              const postTitle = getLocalizedText(post.title, lang)
+              const postExcerpt = getLocalizedText(post.excerpt, lang)
+              return (
+                <div className="admin-item" key={post.id}>
+                  <div className="admin-item-main">
+                    <p className="review-name">{postTitle || post.slug}</p>
+                    <p className="muted">
+                      {post.author_name || copy.admin_blog_author_unknown}
+                      {post.author_email ? ` · ${post.author_email}` : ''}
+                    </p>
+                    {postExcerpt ? <p className="admin-text">{postExcerpt}</p> : null}
+                  </div>
+                  <div className="admin-actions">
+                    <button
+                      className="ghost"
+                      type="button"
+                      onClick={() => loadBlogForm(post)}
+                    >
+                      {copy.admin_blog_edit}
+                    </button>
+                    <button
+                      className="ghost"
+                      type="button"
+                      onClick={() => handleBlogModeration(post.id, 'rejected')}
+                    >
+                      {copy.admin_blog_action_reject}
+                    </button>
+                    <button
+                      className="cta"
+                      type="button"
+                      onClick={() => handleBlogModeration(post.id, 'published')}
+                    >
+                      {copy.admin_blog_action_publish}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="muted">{copy.admin_blog_empty}</p>
+        )}
+      </div>
+      <div className="admin-panel">
+        <div className="admin-panel-header">
+          <h4>{copy.admin_blog_published_title}</h4>
+          <p className="muted">{copy.admin_blog_published_desc}</p>
+        </div>
+        {posts.length ? (
+          <div className="admin-list">
+            {posts.slice(0, 8).map((post) => {
+              const postTitle = getLocalizedText(post.title, lang)
+              const postExcerpt = getLocalizedText(post.excerpt, lang)
+              const postId = post.id || post.slug
+              return (
+                <div className="admin-item" key={postId}>
+                  <div className="admin-item-main">
+                    <p className="review-name">{postTitle || post.slug}</p>
+                    {postExcerpt ? <p className="admin-text">{postExcerpt}</p> : null}
+                  </div>
+                  <div className="admin-actions">
+                    <button
+                      className="ghost"
+                      type="button"
+                      onClick={() => loadBlogForm(post)}
+                    >
+                      {copy.admin_blog_edit}
+                    </button>
+                    <button
+                      className="ghost"
+                      type="button"
+                      onClick={() => handleBlogModeration(postId, 'pending')}
+                    >
+                      {copy.admin_blog_action_depublish}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="muted">{copy.admin_blog_published_empty}</p>
+        )}
+      </div>
+    </>
+  )
+}
+
+const AdminVerificationPage = () => {
+  const { verificationRequests, handleVerificationModeration } = useAppContext()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel-header">
+        <h4>{copy.verification_admin_title}</h4>
+        <p className="muted">{copy.verification_admin_desc}</p>
+      </div>
+      {verificationRequests.length ? (
+        <div className="admin-list">
+          {verificationRequests.map((request) => (
+            <div className="admin-item" key={request.id || request.user_uid}>
+              <div className="admin-item-main">
+                <p className="review-name">{request.user_name}</p>
+                <p className="muted">{request.user_email}</p>
+                <p className="muted">
+                  {copy.verification_phrase_label}: {request.phrase}
+                </p>
+                {request.photo_url ? (
+                  <img
+                    className="admin-photo user-media"
+                    src={request.photo_url}
+                    alt={request.user_name}
+                    onClick={revealSafetyMedia}
+                  />
+                ) : null}
+              </div>
+              <div className="admin-actions">
+                <button
+                  className="ghost"
+                  type="button"
+                  onClick={() =>
+                    request.id &&
+                    handleVerificationModeration(request.id, 'rejected')
+                  }
+                >
+                  {copy.verification_admin_reject}
+                </button>
+                <button
+                  className="cta"
+                  type="button"
+                  onClick={() =>
+                    request.id &&
+                    handleVerificationModeration(request.id, 'approved')
+                  }
+                >
+                  {copy.verification_admin_approve}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="muted">{copy.verification_admin_empty}</p>
+      )}
+    </div>
+  )
+}
+
+const AdminEventsPage = () => {
+  const { pendingEventRsvps, events, handleEventRsvpUpdate } = useAppContext()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const eventLookup = useMemo(
+    () =>
+      events.reduce<Record<string, Event>>((acc, event) => {
+        acc[event.slug] = event
+        return acc
+      }, {}),
+    [events]
+  )
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-panel-header">
+        <h4>{copy.admin_events_title}</h4>
+        <p className="muted">{copy.admin_events_desc}</p>
+      </div>
+      {pendingEventRsvps.length ? (
+        <div className="admin-list">
+          {pendingEventRsvps.map((rsvp) => {
+            const event = eventLookup[rsvp.event_slug]
+            const categoryLabel =
+              rsvp.category === 'men'
+                ? copy.event_cap_men
+                : rsvp.category === 'women'
+                  ? copy.event_cap_women
+                  : copy.event_cap_couples
+            return (
+              <div
+                className="admin-item"
+                key={rsvp.id || `${rsvp.event_slug}-${rsvp.user_uid}`}
+              >
+                <div className="admin-item-main">
+                  <p className="review-name">{rsvp.user_name}</p>
+                  <p className="muted">{rsvp.user_email}</p>
+                  <p className="muted">
+                    {event ? `${event.title} · ${event.date} · ${event.city}` : rsvp.event_slug}
+                  </p>
+                  <p className="admin-text">
+                    {copy.event_rsvp_category_label}: {categoryLabel}
+                  </p>
+                  {rsvp.trust_badges?.length ? (
+                    <div className="tag-row">
+                      {rsvp.trust_badges.map((badge) => (
+                        <span key={`${rsvp.user_uid}-${badge}`}>{badge}</span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="admin-actions">
+                  <button
+                    className="ghost"
+                    type="button"
+                    onClick={() =>
+                      rsvp.id ? handleEventRsvpUpdate(rsvp.id, 'Declined') : null
+                    }
+                  >
+                    {copy.event_guest_action_decline}
+                  </button>
+                  <button
+                    className="cta"
+                    type="button"
+                    onClick={() =>
+                      rsvp.id ? handleEventRsvpUpdate(rsvp.id, 'Approved') : null
+                    }
+                  >
+                    {copy.event_guest_action_approve}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="muted">{copy.admin_events_empty}</p>
+      )}
+    </div>
   )
 }
 
@@ -5152,6 +3276,9 @@ const ClubsPage = () => {
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
+  const registerState = {
+    from: `${location.pathname}${location.search}${location.hash}`,
+  }
   const [clubName, setClubName] = useState('')
   const [clubCity, setClubCity] = useState('')
   const [clubCountry, setClubCountry] = useState('')
@@ -5212,73 +3339,86 @@ const ClubsPage = () => {
           </article>
         ))}
       </div>
-      <div className="review-panel">
-        <div className="section-title">
-          <h3>{copy.club_submit_title}</h3>
-          <p>{copy.club_submit_desc}</p>
-        </div>
-        <form className="review-form" onSubmit={handleSubmitClub}>
-          <div className="review-form-header">
-            <p
-              className={
-                clubHeaderIsError ? 'review-status review-status--error' : 'review-status'
-              }
-            >
-              {clubHeaderStatus}
-            </p>
+      {authUser ? (
+        <div className="review-panel">
+          <div className="section-title">
+            <h3>{copy.club_submit_title}</h3>
+            <p>{copy.club_submit_desc}</p>
           </div>
-          <label>
-            {copy.club_submit_name_label}
-            <input
-              className="register-input"
-              value={clubName}
-              onChange={(event) => setClubName(event.target.value)}
-              placeholder={copy.club_submit_name_label}
-            />
-          </label>
-          <label>
-            {copy.club_submit_city_label}
-            <input
-              className="register-input"
-              value={clubCity}
-              onChange={(event) => setClubCity(event.target.value)}
-              placeholder={copy.club_submit_city_label}
-            />
-          </label>
-          <label>
-            {copy.club_submit_country_label}
-            <input
-              className="register-input"
-              value={clubCountry}
-              onChange={(event) => setClubCountry(event.target.value)}
-              placeholder={copy.club_submit_country_label}
-            />
-          </label>
-          <label>
-            {copy.club_submit_website_label}
-            <input
-              className="register-input"
-              value={clubWebsite}
-              onChange={(event) => setClubWebsite(event.target.value)}
-              placeholder={copy.club_submit_website_label}
-            />
-          </label>
-          <label>
-            {copy.club_submit_summary_label}
-            <textarea
-              placeholder={copy.club_submit_summary_placeholder}
-              value={clubSummary}
-              onChange={(event) => setClubSummary(event.target.value)}
-            ></textarea>
-          </label>
-          <button className="cta" type="submit" disabled={!canSubmitClub}>
-            {clubLoading ? copy.club_submit_submitting : copy.club_submit_submit}
-          </button>
-          {clubStatus && clubStatus !== copy.auth_sign_in_success ? (
-            <p className="review-status">{clubStatus}</p>
-          ) : null}
-        </form>
-      </div>
+          <form className="review-form" onSubmit={handleSubmitClub}>
+            <div className="review-form-header">
+              <p
+                className={
+                  clubHeaderIsError ? 'review-status review-status--error' : 'review-status'
+                }
+              >
+                {clubHeaderStatus}
+              </p>
+            </div>
+            <label>
+              {copy.club_submit_name_label}
+              <input
+                className="register-input"
+                value={clubName}
+                onChange={(event) => setClubName(event.target.value)}
+                placeholder={copy.club_submit_name_label}
+              />
+            </label>
+            <label>
+              {copy.club_submit_city_label}
+              <input
+                className="register-input"
+                value={clubCity}
+                onChange={(event) => setClubCity(event.target.value)}
+                placeholder={copy.club_submit_city_label}
+              />
+            </label>
+            <label>
+              {copy.club_submit_country_label}
+              <input
+                className="register-input"
+                value={clubCountry}
+                onChange={(event) => setClubCountry(event.target.value)}
+                placeholder={copy.club_submit_country_label}
+              />
+            </label>
+            <label>
+              {copy.club_submit_website_label}
+              <input
+                className="register-input"
+                value={clubWebsite}
+                onChange={(event) => setClubWebsite(event.target.value)}
+                placeholder={copy.club_submit_website_label}
+              />
+            </label>
+            <label>
+              {copy.club_submit_summary_label}
+              <textarea
+                placeholder={copy.club_submit_summary_placeholder}
+                value={clubSummary}
+                onChange={(event) => setClubSummary(event.target.value)}
+              ></textarea>
+            </label>
+            <button className="cta" type="submit" disabled={!canSubmitClub}>
+              {clubLoading ? copy.club_submit_submitting : copy.club_submit_submit}
+            </button>
+            {clubStatus && clubStatus !== copy.auth_sign_in_success ? (
+              <p className="review-status">{clubStatus}</p>
+            ) : null}
+          </form>
+        </div>
+      ) : (
+        <div className="review-panel">
+          <div className="section-title">
+            <h3>{copy.club_submit_title}</h3>
+            <p>{copy.club_submit_desc}</p>
+          </div>
+          <p className="muted">{copy.club_submit_signin_required}</p>
+          <Link className="cta" to={`/${lang}/register`} state={registerState}>
+            {copy.request_access}
+          </Link>
+        </div>
+      )}
     </section>
   )
 }
@@ -5336,6 +3476,59 @@ const EventsPage = () => {
   )
 }
 
+const CityEventsPage = ({ citySlug }: { citySlug?: string }) => {
+  const { events } = useAppContext()
+  const params = useParams()
+  const location = useLocation()
+  const lang = getLangFromPath(location.pathname)
+  const copy = getCopy(lang)
+  const slug = citySlug || params.citySlug || params.slug || ''
+  const cityName = formatCityName(slug)
+  const cityEvents = useMemo(
+    () =>
+      events.filter(
+        (event) => slugify(event.city || '') === slug.toLowerCase()
+      ),
+    [events, slug]
+  )
+
+  useEffect(() => {
+    if (!cityName) {
+      return
+    }
+    document.title = copy.city_events_title.replace('{city}', cityName)
+  }, [cityName, copy.city_events_title])
+
+  return (
+    <section className="feature">
+      <div className="section-title">
+        <h3>{copy.city_events_title.replace('{city}', cityName)}</h3>
+        <p>
+          {cityEvents.length
+            ? copy.city_events_desc.replace('{city}', cityName)
+            : copy.city_events_empty.replace('{city}', cityName)}
+        </p>
+      </div>
+      {cityEvents.length ? (
+        <div className="club-grid">
+          {cityEvents.map((event) => (
+            <article className="data-card reveal" key={event.slug}>
+              <h5>
+                <Link to={`/${lang}/events/${event.slug}`}>{event.title}</Link>
+              </h5>
+              <p>{event.summary}</p>
+              <div className="meta-row">
+                <span>{event.date}</span>
+                <span>{event.city}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 const EventDetail = () => {
   const {
     events,
@@ -5362,10 +3555,37 @@ const EventDetail = () => {
   >([])
   const [chatText, setChatText] = useState('')
   const socketRef = useRef<Socket | null>(null)
+  const siteUrl =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : ''
+  const eventSchema = useMemo(() => {
+    if (!event) {
+      return null
+    }
+    const locationData =
+      event.privacy_tier === 'Private'
+        ? undefined
+        : {
+            '@type': 'Place',
+            name: event.city,
+            address: {
+              '@type': 'PostalAddress',
+              addressLocality: event.city,
+            },
+          }
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: event.title,
+      startDate: event.date,
+      url: siteUrl ? `${siteUrl}/${lang}/events/${event.slug}` : undefined,
+      location: locationData,
+    }
+  }, [event, lang, siteUrl])
 
   useEffect(() => {
     if (!event || !firebaseConfigured) {
-      setRsvps([])
       return
     }
     const unsubscribe = subscribeEventRsvps(event.slug, setRsvps)
@@ -5401,17 +3621,7 @@ const EventDetail = () => {
   }, [event])
 
   if (!event) {
-    return (
-      <section className="feature">
-        <div className="section-title">
-          <h3>{copy.event_not_found_title}</h3>
-          <p>{copy.event_not_found_body}</p>
-        </div>
-        <Link to={`/${lang}/events`} className="ghost">
-          {copy.event_back}
-        </Link>
-      </section>
-    )
+    return <CityEventsPage citySlug={slug} />
   }
 
   const isHost = authEmail?.toLowerCase() === event.host_email.toLowerCase()
@@ -5478,6 +3688,26 @@ const EventDetail = () => {
     event.privacy_tier === 'Public' ||
     isHost ||
     (event.privacy_tier === 'Vetted' && userRsvp?.status === 'Approved')
+  const hasCoords =
+    typeof event.lat === 'number' && Number.isFinite(event.lat) &&
+    typeof event.lng === 'number' && Number.isFinite(event.lng)
+  const shouldFuzzCoords = hasCoords && !addressVisible
+  const baseLat = hasCoords ? event.lat : undefined
+  const baseLng = hasCoords ? event.lng : undefined
+  const lngScale = hasCoords
+    ? 1 / Math.max(0.25, Math.cos(((event.lat as number) * Math.PI) / 180))
+    : 1
+  const fuzzyLat = shouldFuzzCoords && baseLat !== undefined
+    ? baseLat +
+      (hashString(`${event.slug}-lat`) % 2 === 0 ? 1 : -1) *
+        getFuzzyOffset(hashString(`${event.slug}-lat`))
+    : baseLat
+  const fuzzyLng = shouldFuzzCoords && baseLng !== undefined
+    ? baseLng +
+      (hashString(`${event.slug}-lng`) % 2 === 0 ? 1 : -1) *
+        getFuzzyOffset(hashString(`${event.slug}-lng`)) *
+        lngScale
+    : baseLng
 
   const handleSubmit = async (eventForm: FormEvent<HTMLFormElement>) => {
     eventForm.preventDefault()
@@ -5533,6 +3763,7 @@ const EventDetail = () => {
 
   return (
     <section className="feature">
+      {eventSchema ? <JsonLd data={eventSchema} /> : null}
       <div className="section-title">
         <p className="breadcrumb">
           <Link to={`/${lang}/events`}>{copy.events_page_title}</Link> / {event.title}
@@ -5553,6 +3784,14 @@ const EventDetail = () => {
         <div className="data-card detail-card">
           <h5>{copy.event_address_label}</h5>
           <p>{addressVisible ? event.address || '—' : copy.event_address_hidden}</p>
+          {hasCoords ? (
+            <p className="muted">
+              {shouldFuzzCoords
+                ? copy.event_location_approx
+                : copy.event_location_exact}{' '}
+              {fuzzCoordinate(fuzzyLat ?? 0, 3)}, {fuzzCoordinate(fuzzyLng ?? 0, 3)}
+            </p>
+          ) : null}
         </div>
         <div className="data-card detail-card">
           <h5>{copy.event_cap_label}</h5>
@@ -5763,8 +4002,13 @@ const EventDetail = () => {
 }
 
 const HostDashboard = () => {
-  const { events, authEmail, firebaseConfigured, subscribeEventRsvps } =
-    useAppContext()
+  const {
+    events,
+    authEmail,
+    firebaseConfigured,
+    subscribeEventRsvps,
+    handleEventCheckin,
+  } = useAppContext()
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
@@ -5773,6 +4017,11 @@ const HostDashboard = () => {
   }
   const hostEmail = authEmail?.toLowerCase()
   const [rsvpMap, setRsvpMap] = useState<Record<string, EventRsvp[]>>({})
+  const [checkinTokens, setCheckinTokens] = useState<Record<string, string>>({})
+  const [checkinStatus, setCheckinStatus] = useState<Record<string, string>>({})
+  const [checkinLoading, setCheckinLoading] = useState<Record<string, boolean>>(
+    {}
+  )
 
   const hostEvents = useMemo(() => {
     if (!hostEmail) {
@@ -5785,7 +4034,6 @@ const HostDashboard = () => {
 
   useEffect(() => {
     if (!firebaseConfigured || !hostEvents.length) {
-      setRsvpMap({})
       return
     }
     const unsubscribes = hostEvents
@@ -5800,6 +4048,19 @@ const HostDashboard = () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe())
     }
   }, [firebaseConfigured, hostEvents, subscribeEventRsvps])
+
+  const visibleRsvpMap = useMemo(() => {
+    if (!firebaseConfigured || !hostEvents.length) {
+      return {}
+    }
+    return hostEvents.reduce<Record<string, EventRsvp[]>>((acc, event) => {
+      const rsvps = rsvpMap[event.slug]
+      if (rsvps) {
+        acc[event.slug] = rsvps
+      }
+      return acc
+    }, {})
+  }, [firebaseConfigured, hostEvents, rsvpMap])
 
   if (!authEmail) {
     return (
@@ -5837,9 +4098,12 @@ const HostDashboard = () => {
       </div>
       <div className="detail-grid">
         {hostEvents.map((event) => {
-          const rsvps = rsvpMap[event.slug] ?? []
+          const rsvps = visibleRsvpMap[event.slug] ?? []
           const pending = rsvps.filter((item) => item.status === 'Pending')
           const approved = rsvps.filter((item) => item.status === 'Approved')
+          const tokenValue = checkinTokens[event.slug] || ''
+          const statusMessage = checkinStatus[event.slug] || ''
+          const isLoading = checkinLoading[event.slug] || false
           return (
             <div key={event.slug} className="data-card detail-card">
               <h5>
@@ -5858,6 +4122,53 @@ const HostDashboard = () => {
                   <p>{approved.length}</p>
                 </div>
               </div>
+              <form
+                className="link-form"
+                onSubmit={async (eventInput) => {
+                  eventInput.preventDefault()
+                  if (!tokenValue.trim()) {
+                    setCheckinStatus((prev) => ({
+                      ...prev,
+                      [event.slug]: copy.event_checkin_missing,
+                    }))
+                    return
+                  }
+                  setCheckinLoading((prev) => ({ ...prev, [event.slug]: true }))
+                  const result = await handleEventCheckin({
+                    token: tokenValue.trim(),
+                    eventSlug: event.slug,
+                  })
+                  setCheckinStatus((prev) => ({
+                    ...prev,
+                    [event.slug]: result.message,
+                  }))
+                  if (result.ok) {
+                    setCheckinTokens((prev) => ({ ...prev, [event.slug]: '' }))
+                  }
+                  setCheckinLoading((prev) => ({ ...prev, [event.slug]: false }))
+                }}
+              >
+                <label>
+                  {copy.event_checkin_label}
+                  <input
+                    className="register-input"
+                    value={tokenValue}
+                    placeholder={copy.event_checkin_placeholder}
+                    onChange={(eventInput) =>
+                      setCheckinTokens((prev) => ({
+                        ...prev,
+                        [event.slug]: eventInput.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <button className="cta" type="submit" disabled={isLoading}>
+                  {isLoading ? copy.event_checkin_loading : copy.event_checkin_button}
+                </button>
+                {statusMessage ? (
+                  <p className="register-status">{statusMessage}</p>
+                ) : null}
+              </form>
               {pending.length ? (
                 <div className="link-list">
                   {pending.slice(0, 3).map((rsvp) => (
@@ -5958,7 +4269,10 @@ const ClubDetail = () => {
   const lang = getLangFromPath(location.pathname)
   const copy = getCopy(lang)
   const club = clubs.find((item) => item.slug === slug)
-  const clubReviews = reviews.filter((review) => review.club_slug === slug)
+  const clubReviews = useMemo(
+    () => reviews.filter((review) => review.club_slug === slug),
+    [reviews, slug]
+  )
   const primaryReview = clubReviews[0]
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewText, setReviewText] = useState('')
@@ -6241,6 +4555,7 @@ function App() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [firestoreReviews, setFirestoreReviews] = useState<Review[]>([])
   const [pendingReviews, setPendingReviews] = useState<Review[]>([])
+  const [pendingBlogPosts, setPendingBlogPosts] = useState<ModerationPost[]>([])
   const [constellations, setConstellations] = useState<Constellation[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [events, setEvents] = useState<Event[]>([])
@@ -6255,26 +4570,45 @@ function App() {
   const [authUser, setAuthUser] = useState<string | null>(null)
   const [authEmail, setAuthEmail] = useState<string | null>(null)
   const [authUid, setAuthUid] = useState<string | null>(null)
+  const [firestoreReady, setFirestoreReady] = useState(false)
   const [registerStatus, setRegisterStatus] = useState('')
   const [registerLoading, setRegisterLoading] = useState(false)
   const [signInLoading, setSignInLoading] = useState(false)
   const [signInStatus, setSignInStatus] = useState('')
+  const [safetyMode, setSafetyMode] = useState(false)
+  const [userHasRsvp, setUserHasRsvp] = useState(false)
   const authRef = useRef<{ auth: Auth; provider: GoogleAuthProvider } | null>(
     null
   )
   const appRef = useRef<FirebaseApp | null>(null)
-  const firestoreRef = useRef<ReturnType<typeof getFirestore> | null>(null)
+  const firestoreRef = useRef<ReturnType<typeof initFirebase>['firestore'] | null>(
+    null
+  )
 
   const location = useLocation()
   const lang = getLangFromPath(location.pathname)
   const languageCopy = getCopy(lang)
   const isAdmin = authEmail?.toLowerCase() === 'b@bernhard-huber.eu'
 
-  const firebaseConfigured = useMemo(
-    () =>
-      !Object.values(firebaseConfig).some((value) => value.startsWith('YOUR_')),
-    []
-  )
+  const firebaseConfigured = useMemo(() => isFirebaseConfigured(), [])
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem('lbs-safety-mode')
+      setSafetyMode(stored === 'true')
+    } catch {
+      setSafetyMode(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    document.body.classList.toggle('safety-mode', safetyMode)
+    try {
+      window.localStorage.setItem('lbs-safety-mode', safetyMode ? 'true' : 'false')
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [safetyMode])
 
   useEffect(() => {
     if (!firebaseConfigured) {
@@ -6282,12 +4616,11 @@ function App() {
       return
     }
 
-    const app = initializeApp(firebaseConfig)
+    const { app, auth, provider, firestore } = initFirebase()
     appRef.current = app
-    const auth = getAuth(app)
-    const provider = new GoogleAuthProvider()
     authRef.current = { auth, provider }
-    firestoreRef.current = getFirestore(app)
+    firestoreRef.current = firestore
+    setFirestoreReady(true)
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -6307,12 +4640,26 @@ function App() {
   }, [firebaseConfigured, languageCopy.auth_status_pending, languageCopy.auth_status_config])
 
   useEffect(() => {
+    if (!firestoreRef.current || !authUid) {
+      setUserHasRsvp(false)
+      return
+    }
+    const rsvpQuery = query(
+      collection(firestoreRef.current, 'event_rsvps'),
+      where('user_uid', '==', authUid)
+    )
+    const unsubscribe = onSnapshot(rsvpQuery, (snapshot) => {
+      setUserHasRsvp(!snapshot.empty)
+    })
+    return () => unsubscribe()
+  }, [authUid, firestoreReady])
+
+  useEffect(() => {
     const load = async () => {
       const [
         clubsData,
         websitesData,
         reviewsData,
-        postsData,
         constellationsData,
         profilesData,
         eventsData,
@@ -6320,7 +4667,6 @@ function App() {
         loadJson<Club[]>('/data/clubs.json'),
         loadJson<Website[]>('/data/websites.json'),
         loadJson<Review[]>('/data/reviews.json'),
-        loadJson<Post[]>('/data/posts.json'),
         loadJson<Constellation[]>('/data/constellations.json'),
         loadJson<Profile[]>('/data/profiles.json'),
         loadJson<Event[]>('/data/events.json'),
@@ -6329,7 +4675,7 @@ function App() {
       setClubs(clubsData ?? [])
       setWebsites(websitesData ?? [])
       setReviews(reviewsData ?? [])
-      setPosts(postsData ?? [])
+      setPosts([])
       setConstellations(constellationsData ?? [])
       setProfiles(profilesData ?? [])
       setEvents(eventsData ?? [])
@@ -6337,6 +4683,21 @@ function App() {
 
     load()
   }, [])
+
+  useEffect(() => {
+    if (!firebaseConfigured || !firestoreReady || !firestoreRef.current) {
+      return
+    }
+    const db = firestoreRef.current
+    const postsQuery = query(collection(db, 'blog_posts'), where('status', '==', 'published'))
+    const unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
+      const next = snapshot.docs
+        .map((docSnap) => parseBlogPost(docSnap.data() as Record<string, unknown>, docSnap.id))
+        .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
+      setPosts(next)
+    })
+    return () => unsubscribePosts()
+  }, [firebaseConfigured, firestoreReady])
 
   useEffect(() => {
     if (!firebaseConfigured || !firestoreRef.current) {
@@ -6402,6 +4763,29 @@ function App() {
         unsubscribePending()
       }
     }
+  }, [firebaseConfigured, isAdmin])
+
+  useEffect(() => {
+    if (!firebaseConfigured || !firestoreRef.current) {
+      return
+    }
+    if (!isAdmin) {
+      setPendingBlogPosts([])
+      return
+    }
+    const db = firestoreRef.current
+    const pendingPostsQuery = query(
+      collection(db, 'blog_posts'),
+      where('status', '==', 'pending')
+    )
+    const unsubscribe = onSnapshot(pendingPostsQuery, (snapshot) => {
+      const next = snapshot.docs.map((docSnap) =>
+        parseModerationPost(docSnap.data() as Record<string, unknown>, docSnap.id)
+      )
+      setPendingBlogPosts(next)
+    })
+
+    return () => unsubscribe()
   }, [firebaseConfigured, isAdmin])
 
   useEffect(() => {
@@ -6681,6 +5065,7 @@ function App() {
         displayName,
         email,
         birthDate,
+        birthDateTimestamp: Timestamp.fromDate(new Date(birthDate)),
         location,
         interests,
         consentAge,
@@ -6746,6 +5131,7 @@ function App() {
         displayName,
         email: user.email || email,
         birthDate,
+        birthDateTimestamp: Timestamp.fromDate(new Date(birthDate)),
         location,
         interests,
         consentAge,
@@ -6952,6 +5338,9 @@ function App() {
         await updateProfile(user, { displayName })
         setAuthUser(displayName)
       }
+      const birthDateTimestamp = birthDate
+        ? Timestamp.fromDate(new Date(birthDate))
+        : null
       const parsedLat = Number.parseFloat(locationLat)
       const parsedLng = Number.parseFloat(locationLng)
       const hasCoords =
@@ -6965,6 +5354,7 @@ function App() {
           displayName,
           email: user.email || '',
           birthDate,
+          birthDateTimestamp,
           location,
           locationLat: hasCoords ? parsedLat : null,
           locationLng: hasCoords ? parsedLng : null,
@@ -7063,6 +5453,40 @@ function App() {
       created_at: serverTimestamp(),
     })
     return { ok: true, message: languageCopy.verification_status_pending }
+  }
+
+  const handleAccountDelete = async () => {
+    if (!authRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const user = authRef.current.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    try {
+      const token = await user.getIdToken()
+      const response = await fetch('/api/account/delete', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = (await response.json()) as { ok?: boolean; message?: string }
+      if (!response.ok || !data.ok) {
+        return {
+          ok: false,
+          message: data.message || languageCopy.delete_account_status_error,
+        }
+      }
+      await signOut(authRef.current.auth)
+      return { ok: true, message: languageCopy.delete_account_status_success }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.delete_account_status_error
+      return { ok: false, message }
+    }
   }
 
   const handleNotificationsEnable = async () => {
@@ -7214,25 +5638,14 @@ function App() {
       if (targetUid === user.uid) {
         return { ok: false, message: languageCopy.link_request_status_self }
       }
-      const existingA = await getDocs(
-        query(
-          collection(db, 'relationship_links'),
-          where('user_a', '==', user.uid),
-          where('user_b', '==', targetUid)
-        )
-      )
-      const existingB = await getDocs(
-        query(
-          collection(db, 'relationship_links'),
-          where('user_a', '==', targetUid),
-          where('user_b', '==', user.uid)
-        )
-      )
-      if (!existingA.empty || !existingB.empty) {
+      const pairKey = getRelationshipPairKey(user.uid, targetUid)
+      const existingPair = await getDoc(doc(db, 'relationship_links', pairKey))
+      if (existingPair.exists()) {
         return { ok: false, message: languageCopy.link_request_status_exists }
       }
       const targetData = targetDoc.data() as Record<string, unknown>
-      await addDoc(collection(db, 'relationship_links'), {
+      await setDoc(doc(db, 'relationship_links', pairKey), {
+        pair_key: pairKey,
         user_a: user.uid,
         user_b: targetUid,
         user_a_name: user.displayName || '',
@@ -7367,6 +5780,47 @@ function App() {
     })
   }
 
+  const handleEventCheckin = async ({
+    token,
+    eventSlug,
+  }: {
+    token: string
+    eventSlug: string
+  }) => {
+    if (!authRef.current) {
+      return { ok: false, message: languageCopy.auth_status_config }
+    }
+    const user = authRef.current.auth.currentUser
+    if (!user) {
+      return { ok: false, message: languageCopy.review_signin_required }
+    }
+    try {
+      const idToken = await user.getIdToken()
+      const response = await fetch('/api/events/checkin', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, eventSlug }),
+      })
+      const data = (await response.json()) as { ok?: boolean; message?: string }
+      if (!response.ok || !data.ok) {
+        return {
+          ok: false,
+          message: data.message || languageCopy.event_checkin_error,
+        }
+      }
+      return { ok: true, message: data.message || languageCopy.event_checkin_success }
+    } catch (error) {
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String((error as { message?: string }).message)
+          : languageCopy.event_checkin_error
+      return { ok: false, message }
+    }
+  }
+
   const allReviews = useMemo(
     () => [...reviews, ...firestoreReviews],
     [reviews, firestoreReviews]
@@ -7392,6 +5846,67 @@ function App() {
       reviewedAt: serverTimestamp(),
       reviewedBy: authEmail,
     })
+  }
+
+  const handleBlogModeration = async (
+    postId: string,
+    status: 'published' | 'pending' | 'rejected'
+  ) => {
+    if (!firestoreRef.current || !authEmail) {
+      return
+    }
+    const update: Record<string, unknown> = {
+      status,
+      reviewed_at: serverTimestamp(),
+      reviewed_by: authEmail,
+    }
+    if (status === 'published') {
+      update.published_at = serverTimestamp()
+    }
+    await updateDoc(doc(firestoreRef.current, 'blog_posts', postId), update)
+  }
+
+  const handleBlogSave = async (details: {
+    id?: string
+    slug: string
+    title: LocalizedText | string
+    date: LocalizedText | string
+    excerpt: LocalizedText | string
+    meta: [LocalizedText | string, LocalizedText | string]
+    body: LocalizedText | string
+    legacy_url?: string
+    status: 'published' | 'pending'
+  }) => {
+    if (!firestoreRef.current || !authEmail || !isAdmin) {
+      return { ok: false, message: languageCopy.admin_access_denied_body }
+    }
+    const docId = details.id || details.slug
+    if (!docId) {
+      return { ok: false, message: languageCopy.admin_blog_save_error }
+    }
+    const update: Record<string, unknown> = {
+      slug: details.slug,
+      title: details.title,
+      date: details.date,
+      excerpt: details.excerpt,
+      meta: details.meta,
+      body: details.body,
+      legacy_url: details.legacy_url || '',
+      status: details.status,
+      updated_at: serverTimestamp(),
+      updated_by: authEmail,
+    }
+    if (details.status === 'published') {
+      update.published_at = serverTimestamp()
+    }
+    const docRef = doc(firestoreRef.current, 'blog_posts', docId)
+    const snapshot = await getDoc(docRef)
+    if (!snapshot.exists()) {
+      update.created_at = serverTimestamp()
+      update.created_by = authEmail
+    }
+    await setDoc(docRef, update, { merge: true })
+    return { ok: true, message: languageCopy.admin_blog_save_success }
   }
 
   const handleVerificationModeration = async (
@@ -7439,7 +5954,10 @@ function App() {
     handleReviewSubmit,
     handleClubSubmit,
     handleReviewModeration,
+    handleBlogModeration,
+    handleBlogSave,
     pendingReviews,
+    pendingBlogPosts,
     pendingEventRsvps,
     isAdmin,
     firebaseConfigured,
@@ -7450,12 +5968,17 @@ function App() {
     handleNotificationsDisable,
     handleVerificationSubmit,
     handleVerificationModeration,
+    handleAccountDelete,
+    safetyMode,
+    setSafetyMode,
+    userHasRsvp,
     handleLinkRequest,
     handleLinkResponse,
     handleLinkVisibility,
     subscribeEventRsvps,
     handleEventRsvpSubmit,
     handleEventRsvpUpdate,
+    handleEventCheckin,
   }
 
   return (
@@ -7472,11 +5995,19 @@ function App() {
           <Route path="cities/:citySlug" element={<CityPage />} />
           <Route path="map" element={<MapPage />} />
           <Route path="blog" element={<BlogPage />} />
+          <Route path="blog/:slug" element={<BlogPostPage />} />
           <Route path="register" element={<RegisterPage />} />
           <Route path="profiles/:slug" element={<PublicProfilePage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="messages" element={<MessagesPage />} />
           <Route path="guidelines" element={<GuidelinesPage />} />
-          <Route path="admin" element={<AdminPage />} />
+          <Route path="admin" element={<AdminLayout />}>
+            <Route index element={<AdminOverview />} />
+            <Route path="reviews" element={<AdminReviewsPage />} />
+            <Route path="blog" element={<AdminBlogPage />} />
+            <Route path="verification" element={<AdminVerificationPage />} />
+            <Route path="events" element={<AdminEventsPage />} />
+          </Route>
         </Route>
       ))}
       <Route path="*" element={<Navigate to="/en" replace />} />

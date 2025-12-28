@@ -9,10 +9,12 @@
     "build:ci": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "seed:blog": "node scripts/seed-blog-posts.mjs",
     "server": "node server/index.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "d3-force": "^3.0.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.1.0",
     "firebase": "^10.12.2",
@@ -31,6 +33,7 @@
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/d3-force": "^3.0.10",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
