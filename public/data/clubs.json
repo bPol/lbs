@@ -19,6 +19,23 @@
     "map_y": 77.5
   },
   {
+    "name": "Limb",
+    "slug": "limb-madrid",
+    "summary": {
+      "en": "Modern Madrid venue with late-night energy, sleek lounge upstairs, and varied playrooms below.",
+      "pl": "Nowoczesny klub w Madrycie z nocną energią, stylowym lounge na górze i zróżnicowanymi pokojami na dole.",
+      "fr": "Lieu moderne à Madrid, énergie nocturne tardive, lounge élégant en haut et playrooms variées en bas.",
+      "de": "Moderner Madrid-Club mit später Energie, stylischer Lounge oben und vielfältigen Playrooms unten.",
+      "it": "Locale moderno a Madrid con energia notturna, lounge elegante sopra e playroom varie sotto.",
+      "es": "Local moderno en Madrid con energía nocturna, lounge elegante arriba y playrooms variadas abajo."
+    },
+    "city": "Madrid",
+    "country": "Spain",
+    "country_code": "ES",
+    "lat": 40.4168,
+    "lng": -3.7038
+  },
+  {
     "name": "Lullaby Swing Club",
     "slug": "lullaby-swing-club",
     "summary": {
@@ -53,21 +70,38 @@
     "lng": 15.083
   },
   {
-    "name": "KitKat Club / Wasteland",
+    "name": "KitKatClub",
     "slug": "kitkat-wasteland",
     "summary": {
-      "en": "Berlin nightlife stop with immersive event programming and themed nights.",
-      "pl": "Berliński przystanek nocnego życia z immersyjnym programem wydarzeń i nocami tematycznymi.",
-      "fr": "Étape berlinoise avec programmation immersive et soirées à thème.",
-      "de": "Berliner Nightlife-Spot mit immersivem Eventprogramm und Mottoabenden.",
-      "it": "Tappa della nightlife berlinese con programmazione immersiva e serate a tema.",
-      "es": "Parada de la noche berlinesa con programación inmersiva y noches temáticas."
+      "en": "Raw techno institution where dance floor and play space blend; creative fetish dress is mandatory.",
+      "pl": "Surowa instytucja techno, gdzie parkiet płynnie łączy się ze strefami zabawy; kreatywny fetyszowy dress code jest obowiązkowy.",
+      "fr": "Institution techno brute où piste et espaces de jeu se confondent ; dress code fétiche créatif obligatoire.",
+      "de": "Rohes Techno-Institut, in dem Tanzfläche und Play-Spaces verschmelzen; kreativer Fetisch-Dresscode Pflicht.",
+      "it": "Istituzione techno grezza dove pista e play space si fondono; dress code fetish creativo obbligatorio.",
+      "es": "Institución techno cruda donde pista y play space se mezclan; dress code fetiche creativo obligatorio."
     },
     "city": "Berlin",
     "country": "Germany",
     "country_code": "DE",
     "lat": 52.52,
     "lng": 13.405
+  },
+  {
+    "name": "Club Equinoxe",
+    "slug": "club-equinoxe",
+    "summary": {
+      "en": "Polished, well-organized club with distinct zones, spa facilities, and a calm, beginner-friendly crowd.",
+      "pl": "Wypolerowany, świetnie zorganizowany klub z wydzielonymi strefami, spa i spokojną, początkującą publicznością.",
+      "fr": "Club haut de gamme, très organisé, avec zones distinctes, spa et public calme, idéal pour débuter.",
+      "de": "Edler, gut organisierter Club mit klaren Zonen, Spa-Bereich und ruhigem, einsteigerfreundlichem Publikum.",
+      "it": "Club di fascia alta, molto organizzato, con zone distinte, spa e pubblico tranquillo, ideale per chi inizia.",
+      "es": "Club de alto nivel, muy organizado, con zonas claras, spa y público tranquilo, ideal para principiantes."
+    },
+    "city": "Hamburg",
+    "country": "Germany",
+    "country_code": "DE",
+    "lat": 53.5511,
+    "lng": 9.9937
   },
   {
     "name": "Fantasy Swingers Club",
@@ -90,15 +124,18 @@
     "name": "Fun4Two",
     "slug": "fun4two",
     "summary": {
-      "en": "Club review covering venue vibe, programming, and community feel.",
-      "pl": "Recenzja klubu obejmująca klimat miejsca, program i społeczność.",
-      "fr": "Avis sur le club couvrant l'ambiance du lieu, la programmation et l'esprit communautaire.",
-      "de": "Club-Review zu Stimmung, Programm und Community-Gefühl.",
-      "it": "Recensione del club su atmosfera del locale, programmazione e senso di comunità.",
-      "es": "Reseña del club sobre ambiente del lugar, programación y sentido de comunidad."
+      "en": "All-inclusive club with pool, spa-style wet area, buffet, and strict themed nights.",
+      "pl": "Klub all-inclusive z basenem, strefą spa, bufetem i ścisłymi nocami tematycznymi.",
+      "fr": "Club tout compris avec piscine, espace humide façon spa, buffet et soirées à thème strictes.",
+      "de": "All-inclusive-Club mit Pool, Spa-Nassbereich, Buffet und strengen Mottoabenden.",
+      "it": "Club all-inclusive con piscina, area umida da spa, buffet e serate a tema rigorose.",
+      "es": "Club todo incluido con piscina, zona húmeda tipo spa, buffet y noches temáticas estrictas."
     },
-    "country": "Poland",
-    "country_code": "PL"
+    "city": "Rhoon",
+    "country": "Netherlands",
+    "country_code": "NL",
+    "lat": 51.857,
+    "lng": 4.422
   },
   {
     "name": "Bunker Swingers Club",
@@ -237,21 +274,38 @@
     "lng": -2.2451148
   },
   {
-    "name": "Vanilla Alternative",
+    "name": "The Vanilla Alternative",
     "slug": "vanilla-alternative",
     "summary": {
-      "en": "Private members' club with large hot tub, playrooms, bar, and on-site accommodation.",
-      "pl": "Prywatny klub członkowski z dużym jacuzzi, pokojami zabaw, barem i noclegiem na miejscu.",
-      "fr": "Club privé pour membres avec grand jacuzzi, playrooms, bar et hébergement sur place.",
-      "de": "Privater Mitgliederclub mit großem Whirlpool, Playrooms, Bar und Unterkunft vor Ort.",
-      "it": "Club privato per soci con grande idromassaggio, playroom, bar e alloggi in loco.",
-      "es": "Club privado para socios con gran jacuzzi, salas de juego, bar y alojamiento en el lugar."
+      "en": "Friendly, social London club with open-plan play areas and an easygoing dress code.",
+      "pl": "Przyjazny, towarzyski klub w Londynie z otwartymi strefami zabawy i luźnym dress code.",
+      "fr": "Club londonien convivial et social, espaces de jeu ouverts et dress code décontracté.",
+      "de": "Freundlicher, sozialer London-Club mit offenen Play-Areas und lockerem Dresscode.",
+      "it": "Club londinese amichevole e sociale, aree play aperte e dress code rilassato.",
+      "es": "Club londinense cercano y social, áreas de juego abiertas y dress code relajado."
     },
-    "city": "Bedford/Cambridgeshire",
+    "city": "London",
     "country": "United Kingdom",
     "country_code": "GB",
-    "lat": 52.3587184,
-    "lng": 0.0438294
+    "lat": 51.5074,
+    "lng": -0.1278
+  },
+  {
+    "name": "Rio's Health Spa",
+    "slug": "rios-health-spa",
+    "summary": {
+      "en": "Naturist spa-first venue with hot tubs, steam rooms, and relaxed, towel-only nights.",
+      "pl": "Miejsce typu spa-naturystyczne z jacuzzi, łaźniami parowymi i spokojnymi wieczorami tylko w ręczniku.",
+      "fr": "Spa naturiste d'abord, avec jacuzzis, hammams et soirées détendues en serviette.",
+      "de": "Naturisten-Spa zuerst, mit Whirlpools, Dampfbädern und entspannten Handtuchabenden.",
+      "it": "Spa naturista prima di tutto, con idromassaggi, bagni di vapore e serate rilassate in asciugamano.",
+      "es": "Spa naturista ante todo, con jacuzzis, baños de vapor y noches relajadas en toalla."
+    },
+    "city": "London",
+    "country": "United Kingdom",
+    "country_code": "GB",
+    "lat": 51.5467,
+    "lng": -0.142
   },
   {
     "name": "Penthouse Playrooms",
@@ -490,6 +544,40 @@
     "country_code": "GB",
     "lat": 51.5074456,
     "lng": -0.1277653
+  },
+  {
+    "name": "Le Glamour",
+    "slug": "le-glamour",
+    "summary": {
+      "en": "Cap d'Agde icon focused on exhibitionism, foam parties, and high-glam door standards.",
+      "pl": "Ikona Cap d'Agde skupiona na ekshibicjonizmie, imprezach z pianą i rygorystycznej selekcji.",
+      "fr": "Icône du Cap d'Agde axée sur l'exhibition, les soirées mousse et une sélection très exigeante.",
+      "de": "Ikone in Cap d'Agde mit Fokus auf Exhibition, Schaumpartys und harter Tür.",
+      "it": "Icona di Cap d'Agde focalizzata su esibizionismo, foam party e selezione molto severa.",
+      "es": "Icono de Cap d'Agde centrado en exhibicionismo, fiestas de espuma y puerta muy exigente."
+    },
+    "city": "Cap d'Agde",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 43.2812,
+    "lng": 3.5101
+  },
+  {
+    "name": "Les Chandelles",
+    "slug": "les-chandelles",
+    "summary": {
+      "en": "Paris dinner-to-club experience with candlelit dining and a discreet cellar play space.",
+      "pl": "Paryskie połączenie kolacji i klubu: kolacja przy świecach i dyskretna piwniczna strefa zabaw.",
+      "fr": "Expérience dîner-club parisienne : dîner aux chandelles puis cave discrète pour jouer.",
+      "de": "Pariser Dinner-Club: Candlelight-Dinner und eine diskrete Keller-Play-Area.",
+      "it": "Esperienza dinner-club parigina: cena a lume di candela e cellar discreta per giocare.",
+      "es": "Experiencia cena-club parisina: cena a la luz de las velas y bodega discreta para jugar."
+    },
+    "city": "Paris",
+    "country": "France",
+    "country_code": "FR",
+    "lat": 48.8566,
+    "lng": 2.3522
   },
   {
     "name": "La Messaline",
@@ -1336,5 +1424,39 @@
     "city": "Costa del Sol",
     "country": "Spain",
     "country_code": "ES"
+  },
+  {
+    "name": "Club 2+2",
+    "slug": "club-2-2",
+    "summary": {
+      "en": "Upscale, intimate Tallinn club with sauna culture, friendly regulars, and spotless rooms.",
+      "pl": "Ekskluzywny, kameralny klub w Tallinnie z kulturą saun, przyjaznymi bywalcami i nienaganną czystością.",
+      "fr": "Club intime et soigné à Tallinn, culture sauna, habitués chaleureux et salles impeccables.",
+      "de": "Gehobener, intimer Club in Tallinn mit Saunakultur, freundlichen Stammgästen und makellosen Räumen.",
+      "it": "Club intimo e curato a Tallinn con cultura della sauna, habitué cordiali e stanze impeccabili.",
+      "es": "Club íntimo y cuidado en Tallin con cultura de sauna, habituales amables y salas impecables."
+    },
+    "city": "Tallinn",
+    "country": "Estonia",
+    "country_code": "EE",
+    "lat": 59.437,
+    "lng": 24.7536
+  },
+  {
+    "name": "Same Place",
+    "slug": "same-place",
+    "summary": {
+      "en": "Bucharest villa-style club known for warm hosting, adventurous group spaces, and easygoing rules.",
+      "pl": "Willa-klub w Bukareszcie znany z serdecznej obsługi, odważnych stref grupowych i swobodnych zasad.",
+      "fr": "Club-villa à Bucarest, réputé pour l'accueil, des espaces de groupe audacieux et des règles souples.",
+      "de": "Villa-Club in Bukarest, bekannt für herzliche Hosts, mutige Gruppenflächen und lockere Regeln.",
+      "it": "Villa club a Bucarest, noto per l'accoglienza, aree di gruppo audaci e regole flessibili.",
+      "es": "Villa-club en Bucarest conocida por la hospitalidad, zonas de grupo atrevidas y reglas flexibles."
+    },
+    "city": "Bucharest",
+    "country": "Romania",
+    "country_code": "RO",
+    "lat": 44.4268,
+    "lng": 26.1025
   }
 ]
